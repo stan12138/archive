@@ -4,6 +4,9 @@
 > -- 17.6.22
 
 
+<font color="red"><b>最好的参考书是learnopengl_book,来自learnopengl.com</b></font>
+
+
 
 首先很有必要搞清GLSL的语法。  
 
@@ -383,7 +386,7 @@ texture的坐标系为左下角为（0，0）的笛卡尔坐标系，范围为0~
 其中的前两个设置如果图片太小，在两个轴的方向各自做什么操作，这里设置了重复，另外还有镜面重复，拉伸，填充等方法，自行查看，特别的填充的话是要指定填充颜色的，所以必须使用额外的函数  
 后两者指定了坐标点的采样方法，还记得双线性内插法吗？差不多是同样的意思，为了解决坐标点不是整数的问题，可以指定两种方法，线性或者是近邻，同时可以为缩放各自指定不同的方法。具体不再细说。  
 
-纹理映射？啥？我有点迷糊了上述后两个设置到底设置的是啥？pass  
+mipmaps, 这个是用来控制视角缩放时texture的过度问题的，这个参数完全是通过filter设定的，换句话说，只需要`glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)`的最后一个参数设置为GL_LINEAR_MIPMAP_LINEAR即可
 #####载入数据
 
 	image = Image.open('../textures/wall.jpg')

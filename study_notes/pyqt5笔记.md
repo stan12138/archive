@@ -2,6 +2,9 @@
 ---
 
 
+
+<font color="red">入门参考书为PyQt5 tutorial</font>
+
 将`ui`文件转换为`.py`文件，使用命令行，命令如下：
 
 	pyuic5 -o my_ui.py my_ui.ui
