@@ -22,7 +22,7 @@
  
 2、`QLineEdit`,
 
-3、 `QTextEdit`，
+3、`QTextEdit`，
 
 4、`QTextBrowser`，
 
@@ -155,3 +155,65 @@
 我们需要在主线程里面调用辅助线程的信号，然后使用`self.tre.signal.connect(self.edit)`函数将这个信号链接到一个方法上。
 
 大概就是这样。所有条件应该已经准备结束了。        
+
+###PyQt4与5的区别
+
+- 模块被重新组织了，有一些被抛弃了，如QtScript，一些被分裂了，如QtGui,QtWebKit
+
+- 新加入了一些模块，如QtBluetooth,QtPositioning,Enginio
+
+- 只支持新式的信号和槽处理，SIGNAL()或SLOT()不再支持
+
+- 在Qt5.0中被标记为废弃的API不再支持
+
+###PyQt5的整体架构
+
+主要包含了15个模块，当然还有一些其他的模块
+
+
+
+1.  QtCore
+
+-  QtGui
+
+- QtWidgets
+
+- QtMultimedia
+
+- QtBuletooth
+
+- QtNetwork
+
+- QtPositioning
+
+- Enginio
+
+- QtWebSockets
+
+- QtWebKit
+
+- QtWebKitWidgets
+
+- QtXml
+
+- QtSvg
+
+- QtSql
+
+- QtTest
+
+比较明显的是大概4~15早期的时候都不需要做太多的学习，他们大多提供了一些特殊的功能。下面逐一对其大概的功能做一下介绍。
+
+QtCore明显是核心，包含了time,files,directories,各种数据类型，流，URLs，mime types，线程，进程等  
+
+QtGui包含了针对窗口系统集成，事件处理，2D图形，图像，字体，文本的类  
+
+QtWidgets包含的是一系列的部件  
+
+多媒体包含了可以处理多媒体内容的类，同时提供了相机，无线电等的接口，蓝牙就不说了。  
+网络模块提供的是网络编程功能，它提供了构建一个TCP,UDP服务的东西  
+QtPositioning它通过各种方式提供定位服务  
+Enginio提供了Qt云端服务的客户端  
+Websockets包含了网络套接字协议  
+剩下的几个没什么好说的，要么暂时没用，要么名字就很明显
+

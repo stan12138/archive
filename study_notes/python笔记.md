@@ -108,3 +108,18 @@ functools模块提供了一些用于函数的工具，例如偏函数
 	int2就是新的函数
 
 若不加关键字，将会自动设置为最左边的参数
+
+
+###很牛叉的代码中运行代码
+实现的效果是怎么样的呢？我可以写一个GUI或者Web页面，自制一个编辑器，接收收入的字符串，然后写入到一个.py文件中，然后使用代码运行这个文件，并接受输出结果，然后再放回到GUI中。  
+
+	import sys
+	import subprocess
+
+	a = subprocess.check_output([sys.executable,filepath],stderr=subprocess.STDOUT, timeout=5)
+
+a就是filepath指的代码的运行输出结果，但是是一个二进制字符串，怎么解析就不必说了吧。  
+稍微解释一下，check_output似乎是一个可以执行命令的函数，并给出返回值，第一个参数是一个列表，列表的第一个值sys.executable是一个字符串，它是本电脑上面python解释器的exe文件的路径，filepath是要执行的文件的目录，stderr是一个固定参数，用来处理错误的，换句话说如果运行出错会返回错误信息，timeout设定最长运行时间。  
+差不多就是这样了，再多的细节我也不太清楚。  
+
+你如果很感兴趣的话，廖雪峰给了一个完整的网络代码编辑器的实现，见网址[http://www.liaoxuefeng.com/wiki/0014316089557264a6b348958f449949df42a6d3a2e542c000/001432523496782e0946b0f454549c0888d05959b99860f000](http://www.liaoxuefeng.com/wiki/0014316089557264a6b348958f449949df42a6d3a2e542c000/001432523496782e0946b0f454549c0888d05959b99860f000 "python代码运行助手")
