@@ -1,4 +1,5 @@
 ### PyQt5
+
 ---
 
 
@@ -19,7 +20,7 @@
 尝试过这么几个控件：
 
 1、`QLabel`, 
- 
+
 2、`QLineEdit`,
 
 3、`QTextEdit`，
@@ -33,7 +34,7 @@
 
 第三个可以显示多行，经过寻找，找到了工作状况良好的代码，可以让它以我所想要的方式工作，第一点：文本对齐，代码如下：
 	self.msg_box.append("hi it's me")
-        
+
     cursor = self.msg_box.textCursor()
     textBlockFormat = cursor.blockFormat()
     textBlockFormat.setAlignment(QtCore.Qt.AlignCenter)
@@ -57,7 +58,6 @@
 
 
 至于最后一个，我认为没有太多的必要使用。
-
 
 ---
 
@@ -83,34 +83,34 @@
 
 解决方法已经找到，代码如下：
 
-	class my_tread(QtCore.QThread) :
-    	signal = QtCore.pyqtSignal()
-    
-    	def __init__(self) :
-        	super().__init__()
+~~~python
+class my_tread(QtCore.QThread) :
+	signal = QtCore.pyqtSignal()
+
+	def __init__(self) :
+    	super().__init__()
  
-    	def run(self) :
-        	for i in range(50) :
-            	sleep(3)
-            	print("i am running",i)
-            	if i==10 :
-                	self.signal.emit()
-
-
-	class my_ui(QWidget) :
-    	def __init__(self) :
-        	super().__init__()
-        
-        	self.tre = my_tread()
-        	self.tre.signal.connect(self.edit)
-        	self.tre.start()
-        	self.setui()
+	def run(self) :
+    	for i in range(50) :
+        	sleep(3)
+        	print("i am running",i)
+        	if i==10 :
+            	self.signal.emit()
                 
+class my_ui(QWidget) :
+	def __init__(self) :
+    	super().__init__()
+    
+    	self.tre = my_tread()
+    	self.tre.signal.connect(self.edit)
+    	self.tre.start()
+    	self.setui()
+~~~
+
 
 首先创建一个新的类，继承自`QtCore.QThread`，这个类需要写一个初始化方法，同时必须创建一个`run`方法，用来覆盖`QtCore.QThread`的`run`方法，在`run`方法里面写业务代码，换句话说，线程开始后，所执行的代码就是`run`方法里面的。
 
 接下来，需要在主线程的初始化方法中实例化自行创建的线程类，然后调用这个实例的`start()`方法，这样就完成了在主线程之外新开一个线程的任务。
-
 
 ---
 
@@ -121,33 +121,37 @@
 
 下面代码实现这样的信号的 ：
 
-	class my_tread(QtCore.QThread) :
-    
-    	signal = QtCore.pyqtSignal()
-    
-    	def __init__(self) :
-        	super().__init__()
-        
-        
-        
-    	def run(self) :
-        	for i in range(50) :
-            	sleep(3)
-            	print("i am running",i)
-            	if i==10 :
-                	self.signal.emit()
+~~~python
+class my_tread(QtCore.QThread) :
 
-	class my_ui(QWidget) :
-    	def __init__(self) :
-        	super().__init__()
-        
-        	self.tre = my_tread()
-        	self.tre.signal.connect(self.edit)
-        	self.tre.start()
-        	self.setui()
+	signal = QtCore.pyqtSignal()
 
-    	def edit(self) :
-        	self.msgwindow.setText("emit success!!!!!")
+	def __init__(self) :
+    	super().__init__()
+    
+    
+    
+	def run(self) :
+    	for i in range(50) :
+        	sleep(3)
+        	print("i am running",i)
+        	if i==10 :
+            	self.signal.emit()
+
+class my_ui(QWidget) :
+	def __init__(self) :
+    	super().__init__()
+    
+    	self.tre = my_tread()
+    	self.tre.signal.connect(self.edit)
+    	self.tre.start()
+    	self.setui()
+
+	def edit(self) :
+    	self.msgwindow.setText("emit success!!!!!")
+~~~
+
+
 
 
 以上的代码，是一个大概的示例，但是明显里面我写了大量的冗余代码，他们是没有必要存在的，我写上只是因为懒得清理，解释一下，在辅助线程里面实例化`QtCore.pyqtSignal()`类，这就是一个信号对象，此处必须注意，实例化必须卸载类的第一行代码，不在任何方法内部，否则就会报错，说信号对象没有`connect()`方法，接下来是信号触发的方法，很明显，只用调用一个函数`self.signal.emit()`
@@ -176,31 +180,31 @@
 
 -  QtGui
 
-- QtWidgets
+-  QtWidgets
 
-- QtMultimedia
+-  QtMultimedia
 
-- QtBuletooth
+-  QtBuletooth
 
-- QtNetwork
+-  QtNetwork
 
-- QtPositioning
+-  QtPositioning
 
-- Enginio
+-  Enginio
 
-- QtWebSockets
+-  QtWebSockets
 
-- QtWebKit
+-  QtWebKit
 
-- QtWebKitWidgets
+-  QtWebKitWidgets
 
-- QtXml
+-  QtXml
 
-- QtSvg
+-  QtSvg
 
-- QtSql
+-  QtSql
 
-- QtTest
+-  QtTest
 
 比较明显的是大概4~15早期的时候都不需要做太多的学习，他们大多提供了一些特殊的功能。下面逐一对其大概的功能做一下介绍。
 
