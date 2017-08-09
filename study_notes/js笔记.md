@@ -579,3 +579,114 @@ person.set('nats');
 
 ## BOM
 
+Bom是用于访问浏览器的功能的。
+
+### window对象
+
+window对象既是用于访问浏览器窗口的接口，同时也是js的全局对象，这意味着js中的所有全局变量和函数都是window的属性和方法。
+
+html5已经废除了框架，所以暂时在这里就不再介绍关于框架的操作。
+
+==截止到这一部分，我必须要同时使用html进行测试了，所以先一笔带过在html中外链js的做法==
+
+`<script src='test.js'></script>`
+
+
+
+
+
+==现在，我对BOM的意义及作用很困惑，感觉并没有太多的用处==
+
+-   setInterval()与clearInterval()方法，前者可以以制定的时间间隔循环运行函数，后者可以停止这个函数的运行。
+
+    ~~~javascript
+    var func_id = window.setInterval(func,time);
+    window.clearInterval(func_id);
+    /time的单位是毫秒
+    ~~~
+
+-   setTimeout()与clearTimeout()方法，他们可以在指定时间之后调用函数
+
+    ~~~javascript
+    var func_id = window.setTimeout(func,time);
+    window.clearTimeout(func_id);
+    ~~~
+
+需要注意的一个点就是，如果要循环执行一个函数，函数需要执行200毫秒，却把间隔设置成100毫秒，就会出问题，所以比较好的替代方案是利用setTimeout()
+
+~~~javascript
+function work()
+{
+  /do something
+  window.setTimeout(work,100);
+}
+var func_id = window.setTimeout(work,100);
+window.clearTimeout(func_id);
+~~~
+
+==这个方法会不会产生大量的id的吧==，怎么办
+
+没有可以一次清除所有工作的内置方法，一个思路是id是一个整数，所以循环清除大量的整数就可以了。
+
+我觉得并不好。
+
+呃，书上说，clearTimeout是用来处理超时未调用的情况的，所以，其实，其重要性远低于clearInterval
+
+
+
+==靠，连写个html做一些小的验证都出错，写不出来，学的没有忘得快，什么时候才能结束==
+
+##### 窗口位置，大小
+
+根据测试，是无法修改当前窗口的位置和大小的，能起作用的只有使用window.open打开的新窗口
+
+根据不同的浏览器，可能会提供这么几种属性拿到窗口的位置，screenLeft,screenTop,screenX,screenY
+
+这四个属性对浏览器依赖很严重，所以如果要用，需要仔细再研究。
+
+跨浏览器确定窗口大小也不容易，可能会使用的四个属性是：innerWidth,innerHeight,outerWidth,outerHeight。在Chrome等浏览器里document.documentElement.clientWidth,document.documentElement.clientHeight也提供了页面信息
+
+除了上面这些之外，还有：
+
+-   window.moveTo(x,y),将窗口移动到x,y
+-   window.moveBy(dx,dy),将窗口移动dx,dy
+-   window.resizeTo(x,y),将窗口尺寸变为x,y
+-   window.resizeBy(dx,dy),将窗口尺寸变化dx,dy
+
+如上面所言，这四个改变窗口的方法必须对程序自己打开的窗口才有效，反正Chrome里面是这样
+
+所以：
+
+-window.open(),这个方法接受四个参数，但通常使用的都是前三个，第四个是关于历史记录什么的，感兴趣自己看。第一个是URL，可以是空字符串，第二个是target,如果是一个已存在的窗口，就会替换内容，如果不是则会新打开一个，第三个参数是一个特性字符串，用以设置新窗口的位置，大小，菜单栏，状态栏，工具栏等等，这里只记录一下关于尺寸位置的，示例：`top=100,left=100,width=800,height=600'`
+
+##### 对话框
+
+-   alert(),常用的
+-   prompt(),接受的第一个参数是提示文本，第二个参数是默认输入文本，这个方法会给出一个文本输入框，然后把用户输入的字符串返回
+-   window.print(),显示打印对话框
+-   window.find(),显示查找对话框
+
+##### location对象
+
+这个对象提供了很对关于url，host等等的属性，似乎对我暂时没啥用
+
+##### navigator对象
+
+这个似乎常用来检测浏览器也能检查插件，也暂时没用
+
+##### screen与history对象
+
+跳过
+
+### 客户端检测
+
+跳过？
+
+
+
+
+
+到了DOM了
+
+## DOM
+
