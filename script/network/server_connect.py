@@ -38,12 +38,21 @@ class Application :
 			
 			#print('client want ',typ)
 			#print('first',help(start_response))
-			start_response('200 OK', [('Content-Type', typ)])
+			
 			if typ=='text/html' :
 				#print('ready going to html_handle function')
+				start_response('200 OK', [('Content-Type', typ)])
 				return self.handle_html(path)
 			else :
 				path = path[1:]
+				if path[-3:] in ['css','.js'] :
+					start_response('200 OK', [('Content-Type', typ)])
+				elif path[-3:] in ['jpg','JPG'] :
+					start_response('200 OK', [('Content-Type', 'image/jpeg')])
+				elif path[-3:] in ['png','PNG'] :
+					start_response('200 OK', [('Content-Type', 'image/png')])
+
+
 				return self.auto_handle(path)
 		elif environ['method'] == 'POST' :
 			try :
@@ -59,14 +68,17 @@ class Application :
 				self.ser.close()
 	
 	def auto_handle(self,path) :
-		p = path.split('.')
-		if p[-1]=='css' or p[-1]=='js' :
+		
+		if path[-3:] in ['css','.js','JPG','jpg','png','PNG'] :
+
 			with open(path,'rb') as fi :
 				rep = fi.read()
+			#print('read done')
 			return rep
 		else :
-			return b'no'
-		
+			print("don't support this path ",path)
+			return 1
+
 	def handle_html(self,path) :
 		#print('handleing.......')
 		if path in self.get_handle_func.keys():

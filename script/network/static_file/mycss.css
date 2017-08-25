@@ -1,0 +1,20 @@
+h1{
+	color: red;
+	font-size: 50px;
+}
+
+body{
+	color: blue;
+	font-family: 'Source code Pro','Microsoft YaHei','Anonymous Pro',AppleGothic;
+}
+
+p.first{
+	color: red;
+	font-style;
+}
+
+p.second{
+	color: black;
+	font-size: 30pt;
+	text-decoration: overline;
+}

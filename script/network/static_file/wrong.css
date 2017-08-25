@@ -1,0 +1,16 @@
+
+div{
+	text-align: center;
+}
+
+span{
+	text-align: center;
+	color:black;
+	font-family: 'Source code Pro','Microsoft YaHei','Anonymous Pro',AppleGothic;
+	font-size: 20px;
+	border: 1px solid gray;
+	border-radius: 10px;
+	background-color: rgba(0,0,150,0.5);
+	box-shadow: 5px 4px 10px 2px gray;
+	padding: 10px;
+}

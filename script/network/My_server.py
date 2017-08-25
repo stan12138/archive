@@ -43,9 +43,11 @@ class Server :
 		self.parse_request(self.cli_message)
 		self.response_body = self.wsgi(self.env,self.response)
 		#print("trying to send")
-		if self.response_body.decode('utf-8') == 'no' :
+		#print(self.response_body[:20])
+		if self.response_body == 1 :
 			pass
 		else :
+			#print('wtf')
 			self.send_close()
 	def parse_request(self,message) :
 		message = message.split('\r\n\r\n')
@@ -91,7 +93,7 @@ class Server :
 			res += bytes(h1,'utf-8')
 			res += b'\r\n\r\n'
 			res += self.response_body
-			#print(res)
+			#print('begin send')
 			self.client.sendall(res)
 			#self.life -= 1
 		finally :
