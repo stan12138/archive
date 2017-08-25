@@ -3,10 +3,6 @@ import io
 import sys
 
 
-class Stop(Exception) :
-	pass
-
-
 class Server :
 	def __init__(self,host='',port='8000') :
 		self.host = host
@@ -21,7 +17,7 @@ class Server :
 		self.wsgi = application
 		
 	def run(self) :
-		print('waiting for connect in port : ',self.port,'use CTR-C stop server')
+		print('waiting for connect in port : ',self.port,' ,use CTR-C stop server')
 		try :
 			while self.life :
 				self.client,self.cli_addrs = self.server.accept()
@@ -29,8 +25,8 @@ class Server :
 				self.handle_request()
 			print('going stop.....')
 			self.server.close()
-		except Stop :
-			print('ok')
+		except Exception :
+			print('something happen,sever going to close....')
 			self.server.close()
 			sys.exit()
 		
@@ -38,7 +34,7 @@ class Server :
 		
 		self.cli_message = self.client.recv(4096)
 		
-		print(self.cli_message)
+		#print(self.cli_message)
 
 		self.cli_message = self.cli_message.decode('utf-8')
 		#self.cli_message = self.cli_message.replace('\r\n\r\n','\r\n')
@@ -73,7 +69,7 @@ class Server :
 			if len(t) == 2 :
 				self.env[t[0]] = t[1]
 		if self.env['method']=='POST' and flage :
-			print(body)
+			#print(body)
 			self.env['wsgi.input'] = io.StringIO(body)
 		#print("phrase done")
 

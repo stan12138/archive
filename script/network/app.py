@@ -1,15 +1,4 @@
 from server_connect import Application
-import threading,signal
-
-stop = False
-
-def signal_handler(a,b) :
-	global stop
-	stop = True
-	print('got signal')
-
-signal.signal(signal.SIGINT, signal_handler)
-
 
 
 ap = Application()
@@ -21,14 +10,20 @@ def index() :
 	#print('got html file')
 	return rep
 
+@ap.set_url('/',method='POST')
+def get_text(message) :
+	print('here')
+	print(message)
+	with open('record.txt','wb') as fi :
+		for i in message.keys() :
+			fi.write(bytes(i,'utf-8'))
+			fi.write(b':')
+			print(message[i])
+			for j in message[i] :
+				fi.write(bytes(j,'utf-8'))
+			fi.write(b'\r\n')
+	with open('static_file/got.html','rb') as fi :
+		rep = fi.read()
 
-s = threading.Thread(target=ap.run, args=('',8000))
-s.setDaemon(True)
-s.start()
-
-while not stop :
-	pass
-
-ap.ser.server.close()
-
-print('already close')
+	return rep
+ap.run(port=8000)
