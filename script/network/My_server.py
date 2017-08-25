@@ -3,6 +3,9 @@ import io
 import sys
 
 
+class Stop(Exception) :
+	pass
+
 
 class Server :
 	def __init__(self,host='',port='8000') :
@@ -12,19 +15,22 @@ class Server :
 		self.server = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
 		self.server.bind((self.host,self.port))
 		self.server.listen(5)
-		self.life = 4
+		self.life = True
+
 	def set_app(self,application) :
 		self.wsgi = application
 		
 	def run(self) :
-		print('waiting for connect in port : ',self.port)
+		print('waiting for connect in port : ',self.port,'use CTR-C stop server')
 		try :
 			while self.life :
 				self.client,self.cli_addrs = self.server.accept()
 				#print("got on connect")
 				self.handle_request()
+			print('going stop.....')
 			self.server.close()
-		except KeyboardInterrupt :
+		except Stop :
+			print('ok')
 			self.server.close()
 			sys.exit()
 		
@@ -91,7 +97,7 @@ class Server :
 			res += self.response_body
 			#print(res)
 			self.client.sendall(res)
-			self.life -= 1
+			#self.life -= 1
 		finally :
 			self.client.close()
 			#if self.life < 1 :
@@ -103,5 +109,4 @@ def make_server(host,port,application) :
 	return serve
 
 	
-		
-		
+	

@@ -1,4 +1,16 @@
 from server_connect import Application
+import threading,signal
+
+stop = False
+
+def signal_handler(a,b) :
+	global stop
+	stop = True
+	print('got signal')
+
+signal.signal(signal.SIGINT, signal_handler)
+
+
 
 ap = Application()
 
@@ -9,4 +21,14 @@ def index() :
 	#print('got html file')
 	return rep
 
-ap.run(port=8001)
+
+s = threading.Thread(target=ap.run, args=('',8000))
+s.setDaemon(True)
+s.start()
+
+while not stop :
+	pass
+
+ap.ser.server.close()
+
+print('already close')
