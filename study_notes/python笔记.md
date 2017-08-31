@@ -1,4 +1,24 @@
-###有很多模块包的网站
+### 工具
+
+写大的代码文件，一般使用spyder
+
+但是在平时做一些简单的交互式测试的时候，一般使用jupyter notebook
+
+在做网络编程的时候，常用的是sublime text3+cmd
+
+#### jupyter notebook
+
+打开一个命令行，输入jupyter notebook，即可运行起来notebook
+
+最基本的，我需要设置字体，因为原本的字体实在太难看了，打开anaconda下面的Lib/site-packages/notebook/static/custom/custom.css，在里面添加这样的css`.CodeMirror pre {font-family: 'Source Code Pro';}`即可
+
+呃，还有结果输出的样式：`div.output_area pre {font-family: 'Source Code Pro';}`
+
+然后，运行的快捷键是shift-enter
+
+
+
+### 有很多模块包的网站
 
 [下载python模块的网站](http://www.lfd.uci.edu/~gohlke/pythonlibs/#pygame)
 
@@ -201,4 +221,291 @@ while True :
 
 
 ### 装饰器
+
+这里只讲基本的装饰器函数。
+
+~~~python
+def t(func) :
+	def t2(a) :
+		print('this is stan')
+		return func(a)
+	return t2
+
+@t
+def test(a) :
+	print('stan')
+~~~
+
+这里你要写一个函数，接受一个函数作为参数，然后当你使用@语法之后，实际上得到的是：
+
+test = t(test)
+
+接下来只需要分析t函数就可以了，t(test)的返回值是t2，所以test实际上变成了t2，当你调用test的时候就会先print('this is stan')，然后返回原本的test函数的返回值，实际上这里是没有返回值的，只是会运行一下test函数，但是，当有返回值的时候返回就有作用了
+
+接下来要更进一步：
+
+如果想让装饰器接收参数，如@t('stan')，那就必须为其再增加一层包装，因为t('stan')已经在执行一个函数了
+
+~~~python
+def t(b) :
+	def t2(func) :
+		def t3(a) :
+			print('this is stan')
+			return func(a)
+		return t3
+	return t2
+
+@t('stan')
+def test(a) :
+	print('stan')
+~~~
+
+其实是蛮容易理解的吧
+
+这里再给出一个flask里面用来设置url的装饰器，他的目的只是关联url和相应的处理函数，并把处理函数收集起来，所以它的装饰器原型是这样的
+
+~~~python
+	def set_url(self,url,method='GET') :
+		def second(func) :
+			if method=='GET' :
+				self.get_handle_func[url] = func
+			elif method=='POST' :
+				self.post_handle_func[url] = func
+			return func
+		return second
+~~~
+
+使用的时候：
+
+~~~python
+@ap.set_url('/')
+def index() :
+	with open("static_file/homepage.html",'rb') as fi :
+		rep = fi.read()
+	#print('got html file')
+	return rep
+~~~
+
+稍微分析一下，set_url是第一层包装，只是用来让装饰器可以接收参数的，然后才会返回一个基础版的装饰器即second，当使用这个装饰器的时候，就相当于在做，index = second(index)，于是我们就成功的收集到了index，这是只需要把他和url一起存入字典即可，至于return func，实际上并没有什么用，这是写一写
+
+装饰器就讲这么多
+
+### 生成器
+
+这里讲的生成器指的是生成器函数，而不是表达式
+
+基础的形式只有两种：yield value和value = yield
+
+#### yield value
+
+这种形式的生成器函数配合next()函数使用，它每次都运行到yield语句，然后当调用next()函数的时候，会返回value，然后继续运行，直至下一个yield
+
+~~~python
+def gen() :
+	a = 1
+	while True :
+		yield a
+		a = a+2
+
+s = gen()
+next(x)
+
+~~~
+
+每次调用next就会返回一个a的值，然后运行a=a+2，然后再次断在yield语句处
+
+#### value = yield
+
+这种形式的生成器函数配合send方法使用，同样每次到会运行到yield语句，然后等待从send里面获取一个值，然后继续运行，直至下一个yield
+
+~~~python
+def gen() :
+	while True :
+		a = yield
+		print('I got ',a)
+
+s = gen()
+next(x)
+s.send(1)
+
+~~~
+
+这里只是要注意，我们在调用send方法之前，必须确保生成器运行到了yield语句处，方法就是先调用一下next,这是规范化的一步，叫做预激协程
+
+#### 运行状态
+
+事实上，一个使用生成器函数定义的协程有四个状态：GEN_CREATED,GEN_RUNNING,GEN_SUSPENDED,GEN_CLOSED
+
+其中第一个状态是协程未启动状态，前面的value = yield，当只是执行了s=gen()之后，就出在这个状态，这个时候如果你调用send就会收到一条错误消息，消息很清楚地表示了生成器的状态，这是必须执行预激活
+
+当解释器处在运行中，就是第二种状态
+
+在yield处暂停是第三种状态
+
+
+
+#### 复合语句
+
+我们可以把`value = yield`和`yield value`两种语句结合在一起
+
+~~~python
+def gen3() :
+	a = 2
+	while True :
+		b = yield a
+		print('I got ',b)
+s = gen3() #1
+next(s)    #2
+s.send(3)  #3
+
+~~~
+
+这里，我暂时无法做一些解释，我只能描述他工作的方式
+
+注意，首先我们从前面可以观察到yield value也是会暂停的，当使用next时才会继续运行
+
+然后a = yield也会暂停，需要执行一次send
+
+所以，可以按照这个分析一下上面的代码怎么运行：
+
+1、第一步必须执行next(s)，预激活，然后程序会执行到yield a，返回a，然后等待
+
+2、第二步应该执行send,程序继续运行，到yield a之前
+
+接下来每执行一次next,返回一个值，再执行一次send接收一个值
+
+当然可以连续执行两次next，那么就会收到一个None
+
+天衣无缝是不是？但是，事实并非如此
+
+事实上的常规运行是：预激活，然后不停调用send就行了，程序只会在b=yield处产生断点，yield a则会自动执行，并不需要调用next，如果调用了next则相当于send(None)
+
+~~~python
+def gen3() :
+	a = 2
+	while True :
+		b = yield a
+		print('I got ',b)
+        
+        
+s1 = gen3()
+next(s1)
+out :2
+s1.send(5)
+out: I got 5
+out: 2
+next(s1)
+out: I got None
+out: 2
+~~~
+
+如上所示
+
+总而言之，断点只有b = yield，而yield a会自动执行，除了预激活之外不需要使用next
+
+我知道很诡异
+
+#### 预激活装饰器
+
+如果忘记预激活了，就很麻烦，所以可以使用一个装饰器，自动完成预激活
+
+~~~python
+from functools import wraps
+
+def coroutine(func) :
+	@wraps(func)
+	def primer(*args,**kwargs) :
+		gen = func()
+		next(gen)
+		return gen
+	return primer
+
+@coroutine
+def test() :
+	total = 0.0
+	count = 0
+	av = None
+	while True :
+		term = yield av
+		total += term
+		count += 1
+		av = total/count
+
+b = test()
+b.send(2)
+~~~
+
+用法完全一致，只不过可以少了预激活
+
+前面的wrap装饰器可以直接忽略掉，因为他只是用来弥补装饰器的缺陷的，因为是用完了装饰器之后func的`__name__`等属性会改变，wrap只是把它改回来
+
+#### 终止协程与异常处理
+
+截止到目前为止，如果向协程send了不合乎要求的值，将会直接导致抛出异常，协程也将终止，并且无法使用send再次激活
+
+这实际上说明了可以使用这种方式终止协程
+
+生成器提供了两个方法，throw和close
+
+后者可以直接关闭生成器，前者可以向生成器传入一个异常，如果想在关闭时做一些操作，则需要使用try...finally
+
+~~~python
+def test() :
+	total = 0.0
+	count = 0
+	av = None
+	try :
+		while True :
+			term = yield av
+			total += term
+			count += 1
+			av = total/count
+	finally :
+		print('stop')
+  
+~~~
+
+#### 生成器的返回值
+
+如果想要通过return拿到生成器的值比较麻烦，因为生成器的停止一定会抛出异常，返回值将以异常的value的形式给出，所以，我们必须这样：
+
+~~~python
+def gen3() :
+    a = 2
+    while True :
+        b = yield a
+        if b==1 :
+            break
+        print('got ',b)
+    return 10
+s = gen3()
+next(s)
+try :
+    s.send(1)
+except StopIteration as t :
+    ret = t.value
+~~~
+
+ret就是返回值
+
+
+
+#### yield from
+
+这是一个新增的语法，我认为它存在的目的就是为了解决如何在一个生成器中调用另一个生成器，如果你想要尝试一下手工实现这个目的，并完整的实现输出，传递数据，处理异常，各种方法调用，你就会知道，这也是一个比较麻烦的问题，yield from解决了这所有的问题，如此。
+
+假设函数A是：`yield from B()`
+
+B()会返回一个可迭代对象（或者生成器），A也会返回一个生成器，分别称之b,a
+
+那么，借用一个博客上面的记录：
+
+>   1.  b迭代产生的每个值都直接传递给a的调用者。
+>   2.  所有通过`send`方法发送到a的值都被直接传递给b. 如果发送的 值是`None`，则调用b的`__next__()`方法，否则调用b的`send` 方法。如果对b的方法调用产生`StopIteration`异常，a会继续 执行`yield from`后面的语句，而其他异常则会传播到a中，导 致a在执行`yield from`的时候抛出异常。
+>   3.  如果有除`GeneratorExit`以外的异常被throw到a中的话，该异常 会被直接throw到b中。如果b的`throw`方法抛出`StopIteration`， a会继续执行；其他异常则会导致a也抛出异常。
+>   4.  如果一个`GeneratorExit`异常被throw到a中，或者a的`close` 方法被调用了，并且b也有`close`方法的话，b的`close`方法也 会被调用。如果b的这个方法抛出了异常，则会导致a也抛出异常。 反之，如果b成功close掉了，a也会抛出异常，但是是特定的 `GeneratorExit`异常。
+>   5.  a中`yield from`表达式的求值结果是b迭代结束时抛出的 `StopIteration`异常的第一个参数。
+>   6.  b中的`return <expr>`语句实际上会抛出`StopIteration(<expr>)` 异常，所以b中return的值会成为a中`yield from`表达式的返回值。
+
+从外在表现上面看，你会感觉到，你对a的操作完全就是在直接操作b，没有任何区别，因此一系列表现与上面讲的生成器没有区别。
 
