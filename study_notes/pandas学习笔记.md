@@ -30,6 +30,23 @@ Series可以接受列表、字典或array等一维结构的数据，支持传入
 
 接下来在DataFrame中，数据量都比较大，使用手工创建字典的方式会比较累，所以，这里先提前记录一下关于从文件中加载数据的方法。
 
+负责加载数据的函数主要有四个：
+
+-   read_csv
+-   read_table
+-   read_fwf
+-   read_clipboard
+
+最常使用的是前两个，现阶段，我使用的可能是read_csv
+
+也可以使用read_table加载csv文件，但是要通过sep参数指定分隔符
+
+直接使用`read_csv('t1.csv')读取，数据的第一行会被作为列标，行标则会自动生成，从0开始。可以使用names指定列标，行标只能先选择使用默认数字，或者某一列
+
+`data = read_csv('t1.csv',names=['a','b','c','d','name'],index_col='name')`
+
+
+
 
 
 ### DataFrame
