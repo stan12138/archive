@@ -6,6 +6,8 @@
 
 首先我们必须在电脑上安装JDK，这个在java里面已经处理过了，我选择的开发环境是Android Studio，直接去官网下载，然后安装就好，安装的过程中并没有太多的讲究和困难，安装完成之后，打开还会给你继续安装SDK之类的。然后我们就可以创建一个项目了，可能要做一些选择，例如我们要选择一个什么形式的应用，暂时只需要选择空白的就可以。
 
+如果桌面上没有生成图标，我们可以通过`Android/bin/studio64.exe`来开启应用
+
 然后当我们打开第一个应用的时候会遇到第一个问题所在，界面可能会卡在`Building xxx Application project info`类似的页面打不开，这是因为创建这个信息的过程中会使用一个叫做gradle的东西，默认会从谷歌下载，所以，你懂的，这是我们需要关掉软件，找到刚才创建的项目所在的文件夹，在它的`gradle\wrapper`里面找到`gradle-wrapper.properties`的配置文件，用sublime打开，他的最后一行是`distributionUrl=https\://services.gradle.org/distributions/gradle-3.3-all.zip`，这个指定了我们需要的gradle的版本，自己找个合适的地方去下载与要求完全一致的版本就好。
 
 然后，不论你在安装的过程中选择的是什么文件夹，也不管你在哪里创建的工程，你总是可以在`C:\Users\stan han`找到一个名为`.gradle`的文件夹，在`.gradle\wrapper\dists\gradle-3.3-all\55gk2rcmfc6p2dg9u9ohc3hw9`里面放进刚才下载好的zip的gradle文件，不需要解压
