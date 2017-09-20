@@ -2,6 +2,15 @@ import socket
 import io
 import sys
 import http.client
+import logging
+import logging.config
+
+
+
+logging.config.fileConfig('stan.conf')
+f_log = logging.getLogger('second')
+s_log = logging.getLogger('first')
+
 
 
 def show_ip() :
@@ -28,16 +37,25 @@ class Server :
 		self.wsgi = application
 		
 	def run(self) :
-		print('waiting for connect in port : ',self.port,' ,use CTR-C stop server')
+		ip = show_ip()
+		f_log.info('waiting for connect in '+ip+':%s ,use CTR-C stop server'%self.port)
+		s_log.info('waiting for connect in '+ip+':%s ,use CTR-C stop server'%self.port)
+		#print('waiting for connect in port : ',self.port,' ,use CTR-C stop server')
 		try :
 			while self.life :
 				self.client,self.cli_addrs = self.server.accept()
+				f_log.info('got connect from %s:%s'%(self.cli_addrs[0],self.cli_addrs[1]))
+				s_log.info('got connect from %s:%s'%(self.cli_addrs[0],self.cli_addrs[1]))
 				#print("got on connect")
 				self.handle_request()
-			print('going stop.....')
+			f_log.warning('going to stop......')
+			s_log.warning('going to stop......')
+			#print('going stop.....')
 			self.server.close()
 		except Exception :
-			print('something happen,sever going to close....')
+			f_log.error('something wrong,sever going to close......')
+			s_log.error('something wrong,sever going to close......')
+			#print('something happen,sever going to close....')
 			if self.client :
 				self.client.close()
 			self.server.close()
@@ -82,7 +100,8 @@ class Server :
 		requestline = self.raw_requestline.decode('utf-8')
 		requestline = requestline.rstrip('\r\n')
 		self.request_line = requestline
-
+		f_log.info(self.request_line)
+		s_log.info(self.request_line)
 		words = self.request_line.split()
 		if len(words)==3 :
 		
@@ -92,7 +111,9 @@ class Server :
 			self.env['version'] = version
 			
 		else :
-			print('sorry , I do not accept not len(request line)==3')
+			f_log.error('sorry , len(request line) not equal to 3 , can not parse......')
+			s_log.error('sorry , len(request line) not equal to 3 , can not parse......')
+			#print('sorry , I do not accept not len(request line)==3')
 
 		
 	def get_body(self) :
@@ -147,6 +168,8 @@ class Server :
 			self.client.sendall(res)
 			#self.life -= 1
 		finally :
+			f_log.info('reponse done......')
+			s_log.info('reponse done......')
 			self.client.close()
 			#if self.life < 1 :
 			#	self.server.close()

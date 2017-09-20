@@ -1,4 +1,4 @@
-from My_server import make_server
+from My_server import make_server,f_log,s_log
 from urllib.parse import parse_qs
 import threading,signal
 from io import BytesIO
@@ -51,8 +51,6 @@ class Application :
 					start_response('200 OK', [('Content-Type', 'image/jpeg')])
 				elif path[-3:] in ['png','PNG'] :
 					start_response('200 OK', [('Content-Type', 'image/png')])
-
-
 				return self.auto_handle(path)
 		elif environ['method'] == 'POST' :
 			try :
@@ -113,7 +111,9 @@ class Application :
 				self.form[i.decode('utf-8')] = po[i]
 
 		elif form_type == 'text/plain' :
-			print("can not handle this type form , sorry")
+			f_log.error('can not handle this type form , sorry......')
+			s_log.error('can not handle this type form , sorry......')
+			#print("can not handle this type form , sorry")
 
 		else :
 			#print("Hi stan ,find multipart.......")
@@ -133,6 +133,7 @@ class Application :
 		fi = BytesIO(po)
 		oneline = fi.readline()
 		form = {}
+		file_num = -1
 		#print("Hi,stan,I come to here.....")
 		if bound in oneline and bound==oneline.rstrip(b'\r\n'):
 			while True :
@@ -166,17 +167,22 @@ class Application :
 						form[form['name']+'.filename'] = form['xxxstanxxx']
 						del form['xxxstanxxx']
 				form[form['name']+'.content'] = content
+				file_num += 1
 				if new.rstrip(b'\r\n') == bound :
 					continue
 				elif new.rstrip(b'\r\n') == bound + b'--' :
 					break
+		f_log.info('recive and parse %s files'%file_num)
+		s_log.info('recive and parse %s files'%file_num)
 		return form
 	def close(self) :
 		self.ser.server.close()
 
 	def signal_handler(self,a,b) :
 		self.stop = True
-		print('get stop signal')
+		f_log.info('get stop signal......')
+		s_log.info('get stop signal......')
+		#print('get stop signal')
 
 	def run(self,host='',port=8000) :
 		signal.signal(signal.SIGINT, self.signal_handler)
@@ -189,8 +195,9 @@ class Application :
 			pass
 
 		self.close()
-
-		print('already close')		
+		f_log.info('already close......')
+		s_log.info('already close......')
+		#print('already close')		
 
 
 

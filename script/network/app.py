@@ -23,6 +23,7 @@ def get_text(form) :
 		fi.write(form['user.content'])
 	with open(form['stan.filename'].decode('utf-8'),'wb') as fi :
 		fi.write(form['stan.content'])
+		
 	with open('static_file/got.html','rb') as fi :
 		rep = fi.read()
 
