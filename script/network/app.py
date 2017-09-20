@@ -1,29 +1,31 @@
 from server_connect import Application
+from My_server import show_ip
+
+
+ip = show_ip()
+
 
 
 ap = Application()
 
 @ap.set_url('/')
 def index() :
-	with open("static_file/first.html",'rb') as fi :
+	with open("static_file/homepage.html",'rb') as fi :
 		rep = fi.read()
 	#print('got html file')
 	return rep
 
 @ap.set_url('/',method='POST')
-def get_text(message) :
-	print('here')
-	print(message)
-	with open('record.txt','wb') as fi :
-		for i in message.keys() :
-			fi.write(bytes(i,'utf-8'))
-			fi.write(b':')
-			print(message[i])
-			for j in message[i] :
-				fi.write(bytes(j,'utf-8'))
-			fi.write(b'\r\n')
+def get_text(form) :
+	#print('come here........')
+
+	with open(form['user.filename'].decode('utf-8'),'wb') as fi :
+		fi.write(form['user.content'])
+	with open(form['stan.filename'].decode('utf-8'),'wb') as fi :
+		fi.write(form['stan.content'])
 	with open('static_file/got.html','rb') as fi :
 		rep = fi.read()
 
 	return rep
+print("my ip is :", ip)
 ap.run(port=8000)

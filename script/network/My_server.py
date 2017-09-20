@@ -1,7 +1,18 @@
 import socket
 import io
 import sys
+import http.client
 
+
+def show_ip() :
+	s = socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
+	try :
+		s.connect(('baidu.com',80))
+		ip = s.getsockname()[0]
+		s.close()
+	except :
+		ip = 'N/A'
+	return ip
 
 class Server :
 	def __init__(self,host='',port='8000') :
@@ -27,20 +38,18 @@ class Server :
 			self.server.close()
 		except Exception :
 			print('something happen,sever going to close....')
+			if self.client :
+				self.client.close()
 			self.server.close()
 			sys.exit()
 		
 	def handle_request(self) :
-		
-		self.cli_message = self.client.recv(4096)
-		
-		#print(self.cli_message)
-
-		self.cli_message = self.cli_message.decode('utf-8')
-		#self.cli_message = self.cli_message.replace('\r\n\r\n','\r\n')
 		self.env = {}
-		#print("decode done")
-		self.parse_request(self.cli_message)
+		self.rfile = self.client.makefile('rb',-1)
+		self.get_requestline()
+		self.get_headers()
+		self.get_body()
+
 		self.response_body = self.wsgi(self.env,self.response)
 		#print("trying to send")
 		#print(self.response_body[:20])
@@ -49,6 +58,47 @@ class Server :
 		else :
 			#print('wtf')
 			self.send_close()
+	def get_requestline(self) :
+		self.raw_requestline = self.rfile.readline(65537)
+		if len(self.raw_requestline) > 65536 :
+			print("request line too long , recive fail , going to close......")
+			self.client.close()
+			self.server.close()
+		else :
+			self.parse_request_line()
+
+
+
+	def get_headers(self) :
+		self.headers = http.client.parse_headers(self.rfile,_class=http.client.HTTPMessage)
+		#print(type(self.headers))
+		for i in self.headers :
+			self.env[i] = self.headers.get(i,'')
+
+		
+
+	def parse_request_line(self) :
+
+		requestline = self.raw_requestline.decode('utf-8')
+		requestline = requestline.rstrip('\r\n')
+		self.request_line = requestline
+
+		words = self.request_line.split()
+		if len(words)==3 :
+		
+			command,path,version = words
+			self.env['method'] = command
+			self.env['path'] = path
+			self.env['version'] = version
+			
+		else :
+			print('sorry , I do not accept not len(request line)==3')
+
+		
+	def get_body(self) :
+		self.env['wsgi.input'] = self.rfile
+
+
 	def parse_request(self,message) :
 		message = message.split('\r\n\r\n')
 		flage = False

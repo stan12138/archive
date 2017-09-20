@@ -1,7 +1,7 @@
 from My_server import make_server
 from urllib.parse import parse_qs
 import threading,signal
-
+from io import BytesIO
 
 class Application :
 	def __init__(self) :
@@ -24,12 +24,12 @@ class Application :
 		except Exception :
 			self.close()
 	def application(self,environ,start_response) :
-		print(' ')
-		for i in environ.keys() :
-			print(i,end=' ')
-			print(environ[i])
-		print(' ')
-		print(' ')
+		#print(' ')
+		#for i in environ.keys() :
+		#	print(i,end=' ')
+		#	print(environ[i])
+		#print(' ')
+		#print(' ')
 		#print(self.get_handle_func)
 		typ = environ['Accept'].split(',')
 		typ = typ[0]
@@ -58,10 +58,14 @@ class Application :
 			try :
 				start_response('200 OK', [('Content-Type', typ)])
 				po = environ['wsgi.input'].read(int(environ['Content-Length']))
-				print(po)
-				po = parse_qs(po)
+				#print("Hi stan ,going to handle.......")
+				#po = parse_qs(po)
+				self.environ = environ
+				self.form = {}
+				#print("Hi stan ,going to handle.......")
+				self.handle_form(po)
 
-				return self.handle_post(po,path)
+				return self.handle_post(self.form,path)
 			
 			except Exception :
 				print('Got nothing.....')
@@ -86,9 +90,9 @@ class Application :
 		else :
 			return self.handle_error()
 
-	def handle_post(self,po,path) :
+	def handle_post(self,form,path) :
 		if path in self.post_handle_func.keys() :
-			return self.post_handle_func[path](po)
+			return self.post_handle_func[path](form)
 
 		else :
 			return self.handle_error()
@@ -98,6 +102,75 @@ class Application :
 			rep = fi.read()
 		return rep
 
+	def handle_form(self,po) :
+		#print("wtf")
+		#print(self.environ)
+		form_type = self.environ['Content-Type']
+		#print("Hi stan ,get form type.......",form_type)
+		if form_type == 'application/x-www-form-urlencoded' :
+			po = parse_qs(po)
+			for i in po.keys() :
+				self.form[i.decode('utf-8')] = po[i]
+
+		elif form_type == 'text/plain' :
+			print("can not handle this type form , sorry")
+
+		else :
+			#print("Hi stan ,find multipart.......")
+			form_type = form_type.split("; ")
+			if len(form_type)==2 and form_type[0]=='multipart/form-data' :
+				boundary = form_type[1].split('=')
+				if len(boundary) == 2 and boundary[0]=='boundary' :
+					boundary = boundary[1]
+					#print("Hi,stan,I come to here.....")
+					self.form = self.handle_multipart(boundary,po)
+
+	def handle_multipart(self,boundary,po) :
+		#print(po)
+		#print(boundary)
+		bound = b'--' + boundary.encode()
+		#print(po)
+		fi = BytesIO(po)
+		oneline = fi.readline()
+		form = {}
+		#print("Hi,stan,I come to here.....")
+		if bound in oneline and bound==oneline.rstrip(b'\r\n'):
+			while True :
+				headers = b''
+				while True :
+					new = fi.readline()
+					if new==b'\r\n' :
+						break
+					headers += new.replace(b'\r\n',b'; ')
+				content = b''
+				while True :
+					new = fi.readline()
+					if bound in new :
+						break
+					content += new
+				headers = headers.split(b'; ')
+				form['name'] = 'xxxstanxxx'
+				for i in headers :
+					if b': ' in i :
+						c = i.split(b': ')
+						form[c[0].decode('utf-8')] = c[1]
+					elif b'=' in i :
+						c = i.split(b'=')
+						if c[0].decode('utf-8')=='filename' :
+							form[form['name']+'.filename'] = c[1].replace(b'"',b'')
+						elif c[0].decode('utf-8') == 'name' :
+							form['name'] = c[1].replace(b'"',b'').decode('utf-8')
+						else :
+							form[c[0].decode('utf-8')] = c[1].replace(b'"',b'')
+					if 'xxxstanxxx' in form.keys() :
+						form[form['name']+'.filename'] = form['xxxstanxxx']
+						del form['xxxstanxxx']
+				form[form['name']+'.content'] = content
+				if new.rstrip(b'\r\n') == bound :
+					continue
+				elif new.rstrip(b'\r\n') == bound + b'--' :
+					break
+		return form
 	def close(self) :
 		self.ser.server.close()
 
