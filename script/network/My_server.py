@@ -4,12 +4,45 @@ import sys
 import http.client
 import logging
 import logging.config
+import ctypes
 
+
+
+
+class stan_log :
+	def __init__(self,logger) :
+		self.logger = logger
+		self.out_handler = ctypes.windll.kernel32.GetStdHandle(-11)
+		self.black = 0xf0
+		self.red = 0xfc
+		self.dark_yellow = 0xf6
+		self.green = 0xfa
+	def set_color(self,color) :
+		ctypes.windll.kernel32.SetConsoleTextAttribute(self.out_handler,color)
+
+	def reset(self) :
+		self.set_color(0xf0)
+
+
+	def info(self,message) :
+		self.set_color(self.green)
+		self.logger.info(message)
+		self.reset()
+
+	def warning(self,message) :
+		self.set_color(self.dark_yellow)
+		self.logger.warning(message)
+		self.reset()
+
+	def error(self,message) :
+		self.set_color(self.red)
+		self.logger.error(message)
+		self.reset()
 
 
 logging.config.fileConfig('stan.conf')
-f_log = logging.getLogger('second')
-s_log = logging.getLogger('first')
+f_log = logging.getLogger('file')
+s_log = stan_log(logging.getLogger('screen'))
 
 
 
@@ -161,8 +194,10 @@ class Server :
 					h1 += i[0]
 					h1 += ': '
 					h1 += i[1]
+					h1 += '\r\n'
+			#print(h1)
 			res += bytes(h1,'utf-8')
-			res += b'\r\n\r\n'
+			res += b'\r\n'
 			res += self.response_body
 			#print('begin send')
 			self.client.sendall(res)

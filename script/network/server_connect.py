@@ -40,21 +40,23 @@ class Application :
 			#print('first',help(start_response))
 			
 			if typ=='text/html' :
+				body = self.handle_html(path)
+
 				#print('ready going to html_handle function')
-				start_response('200 OK', [('Content-Type', typ)])
-				return self.handle_html(path)
+				start_response('200 OK', [('Content-Type', typ),('Content-Length',str(len(body)))])
+				return body
 			else :
 				path = path[1:]
+				body = self.auto_handle(path)
 				if path[-3:] in ['css','.js'] :
-					start_response('200 OK', [('Content-Type', typ)])
+					start_response('200 OK', [('Content-Type', typ),('Content-Length',str(len(body)))])
 				elif path[-3:] in ['jpg','JPG'] :
-					start_response('200 OK', [('Content-Type', 'image/jpeg')])
+					start_response('200 OK', [('Content-Type', 'image/jpeg'),('Content-Length',str(len(body)))])
 				elif path[-3:] in ['png','PNG'] :
-					start_response('200 OK', [('Content-Type', 'image/png')])
-				return self.auto_handle(path)
+					start_response('200 OK', [('Content-Type', 'image/png'),('Content-Length',str(len(body)))])
+				return body
 		elif environ['method'] == 'POST' :
 			try :
-				start_response('200 OK', [('Content-Type', typ)])
 				po = environ['wsgi.input'].read(int(environ['Content-Length']))
 				#print("Hi stan ,going to handle.......")
 				#po = parse_qs(po)
@@ -62,8 +64,10 @@ class Application :
 				self.form = {}
 				#print("Hi stan ,going to handle.......")
 				self.handle_form(po)
+				body = self.handle_post(self.form,path)
+				start_response('200 OK', [('Content-Type', typ),('Content-Length',str(len(body)))])
 
-				return self.handle_post(self.form,path)
+				return body
 			
 			except Exception :
 				print('Got nothing.....')
