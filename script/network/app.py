@@ -1,8 +1,4 @@
 from server_connect import Application
-from My_server import show_ip
-
-
-ip = show_ip()
 
 
 
@@ -14,6 +10,20 @@ def index() :
 		rep = fi.read()
 	#print('got html file')
 	return rep
+
+@ap.set_url('/static_file/stan.JPG')
+def second() :
+	with open("stan.conf",'rb') as fi :
+		rep = fi.read()
+	#print('got html file')
+	return rep,{'Content-Type':'text/plain'}
+
+@ap.set_url('/give.py')
+def third() :
+	with open("My_server.py",'rb') as fi :
+		rep = fi.read()
+	#print('got html file')
+	return rep,{'Content-Type':'text/x-script.phyton'}
 
 @ap.set_url('/',method='POST')
 def get_text(form) :
@@ -28,9 +38,9 @@ def get_text(form) :
 	with open(form['stan.filename'].decode('utf-8'),'wb') as fi :
 		fi.write(form['stan.content'])
 	'''	
-	with open('static_file/got.html','rb') as fi :
+	with open('static_file/homepage.html','rb') as fi :
 		rep = fi.read()
 
-	return rep
+	return rep,{'Content-Type':'text/html'}
 #print("my ip is :", ip)
 ap.run(port=8000)

@@ -3,6 +3,10 @@ from urllib.parse import parse_qs
 import threading,signal
 from io import BytesIO
 
+
+
+__all__ = ['Application']
+
 class Application :
 	def __init__(self) :
 		self.get_handle_func = {}
@@ -24,15 +28,20 @@ class Application :
 		except Exception :
 			self.close()
 	def application(self,environ,start_response) :
-		#print(' ')
-		#for i in environ.keys() :
-		#	print(i,end=' ')
-		#	print(environ[i])
-		#print(' ')
-		#print(' ')
+		'''
+		print(' ')
+		for i in environ.keys() :
+			print(i,end=' ')
+			print(environ[i])
+		print(' ')
+		print(' ')
+		'''
 		#print(self.get_handle_func)
-		typ = environ['Accept'].split(',')
-		typ = typ[0]
+		if 'Accept' in environ.keys() :
+			typ = environ['Accept'].split(',')
+			typ = typ[0]
+		else :
+			typ = ''
 		path = environ['path']
 		if environ['method'] == 'GET' :
 			
@@ -40,49 +49,95 @@ class Application :
 			#print('first',help(start_response))
 			
 			if typ=='text/html' :
-				body = self.handle_html(path)
-
-				#print('ready going to html_handle function')
-				start_response('200 OK', [('Content-Type', typ),('Content-Length',str(len(body)))])
+				body_head = self.handle_html(path)
+				if len(body_head) == 2 :
+					body = body_head[0]
+					head = body_head[1]
+				else :
+					body = body_head
+					head = ''
+				if head and 'Content-Type' in head.keys() :
+					start_response('200 OK', [('Content-Type', head['Content-Type']),('Content-Length',str(len(body)))])
+				else :
+					#print('ready going to html_handle function')
+					start_response('200 OK', [('Content-Type', typ),('Content-Length',str(len(body)))])
 				return body
 			else :
-				path = path[1:]
-				body = self.auto_handle(path)
-				if path[-3:] in ['css','.js'] :
-					start_response('200 OK', [('Content-Type', typ),('Content-Length',str(len(body)))])
-				elif path[-3:] in ['jpg','JPG'] :
-					start_response('200 OK', [('Content-Type', 'image/jpeg'),('Content-Length',str(len(body)))])
-				elif path[-3:] in ['png','PNG'] :
-					start_response('200 OK', [('Content-Type', 'image/png'),('Content-Length',str(len(body)))])
+				if path in self.get_handle_func.keys():
+					body_head = self.get_handle_func[path]()
+					#print("here")
+				else :
+					path = path[1:]  #为了把最前面肯定会带的/字符去掉，呃似乎没必要
+					#print('GOING TO AUTO HANDLE')
+					body_head = self.auto_handle(path)
+				if body_head == 1 :
+					body = 1
+					head = ''
+				elif len(body_head) == 2 :
+					body = body_head[0]
+					head = body_head[1]
+				else :
+					body = body_head
+					head = ''
+
+				if head and 'Content-Type' in head.keys() and not body==1 :
+					start_response('200 OK', [('Content-Type', head['Content-Type']),('Content-Length',str(len(body)))])
+				else :
+					if path[-3:] in ['css','.js'] :
+						start_response('200 OK', [('Content-Type', typ),('Content-Length',str(len(body)))])
+					elif path[-3:] in ['jpg','JPG'] :
+						start_response('200 OK', [('Content-Type', 'image/jpeg'),('Content-Length',str(len(body)))])
+					elif path[-3:] in ['png','PNG'] :
+						start_response('200 OK', [('Content-Type', 'image/png'),('Content-Length',str(len(body)))])
+					else :
+						start_response('200 OK', [('Content-Type', '')])
 				return body
 		elif environ['method'] == 'POST' :
 			try :
 				po = environ['wsgi.input'].read(int(environ['Content-Length']))
 				#print("Hi stan ,going to handle.......")
-				#po = parse_qs(po)
+				environ['wsgi.input'].close()  #我在这里卡了四小时
 				self.environ = environ
 				self.form = {}
 				#print("Hi stan ,going to handle.......")
 				self.handle_form(po)
-				body = self.handle_post(self.form,path)
-				start_response('200 OK', [('Content-Type', typ),('Content-Length',str(len(body)))])
+				body_head = self.handle_post(self.form,path)
+				if len(body_head) == 2 :
+					body = body_head[0]
+					head = body_head[1]
+				else :
+					body = body_head
+					head = ''
+				if head and ('Content-Type' in head.keys()) :
+					start_response('200 OK', [('Content-Type', head['Content-Type']),('Content-Length',str(len(body)))])
+				else :
+					start_response('200 OK', [('Content-Type', typ),('Content-Length',str(len(body)))])
 
 				return body
 			
 			except Exception :
-				print('Got nothing.....')
+				f_log.error("erro when try to handle post,going to close......")
+				s_log.error("erro when try to handle post,going to close......")
+				#print('Got nothing.....')
 				self.ser.close()
 	
 	def auto_handle(self,path) :
 		
 		if path[-3:] in ['css','.js','JPG','jpg','png','PNG'] :
-
-			with open(path,'rb') as fi :
-				rep = fi.read()
-			#print('read done')
-			return rep
+			try :
+				with open(path,'rb') as fi :
+					rep = fi.read()
+				#print('read done')
+				return rep
+			except Exception :
+				f_log.warning("don't support this path : "+path)
+				s_log.warning("don't support this path : "+path)
+				#print("don't support this path ",path)
+				return 1				#暂时决定，这样处理，如果改了这里，也一定要修改server里面的handle_request
 		else :
-			print("don't support this path ",path)
+			f_log.warning("don't support this path : "+path)
+			s_log.warning("don't support this path : "+path)
+			#print("don't support this path ",path)
 			return 1
 
 	def handle_html(self,path) :
@@ -184,8 +239,8 @@ class Application :
 
 	def signal_handler(self,a,b) :
 		self.stop = True
-		f_log.info('get stop signal......')
-		s_log.info('get stop signal......')
+		f_log.warning('get stop signal......')
+		s_log.warning('get stop signal......')
 		#print('get stop signal')
 
 	def run(self,host='',port=8000) :
@@ -199,8 +254,8 @@ class Application :
 			pass
 
 		self.close()
-		f_log.info('already close......')
-		s_log.info('already close......')
+		f_log.warning('already close......')
+		s_log.warning('already close......')
 		#print('already close')		
 
 

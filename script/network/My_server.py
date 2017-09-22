@@ -6,7 +6,7 @@ import logging
 import logging.config
 import ctypes
 
-
+__all__ = ['f_log','s_log','make_server']
 
 
 class stan_log :
@@ -100,19 +100,25 @@ class Server :
 		self.get_requestline()
 		self.get_headers()
 		self.get_body()
-
+		if self.env['method'] == 'GET' :
+			self.rfile.close() #我在这里卡了四小时
 		self.response_body = self.wsgi(self.env,self.response)
 		#print("trying to send")
 		#print(self.response_body[:20])
 		if self.response_body == 1 :
-			pass
+			f_log.warning("can't handle this request, so give you nothing")
+			s_log.warning("can't handle this request, so give you nothing")
+			self.response_body = b''
+			self.send_close()
 		else :
 			#print('wtf')
 			self.send_close()
 	def get_requestline(self) :
 		self.raw_requestline = self.rfile.readline(65537)
 		if len(self.raw_requestline) > 65536 :
-			print("request line too long , recive fail , going to close......")
+			f_log.error('request line too long , recive fail , going to close......')
+			s_log.error('request line too long , recive fail , going to close......')			
+			#print("request line too long , recive fail , going to close......")
 			self.client.close()
 			self.server.close()
 		else :
@@ -122,7 +128,7 @@ class Server :
 
 	def get_headers(self) :
 		self.headers = http.client.parse_headers(self.rfile,_class=http.client.HTTPMessage)
-		#print(type(self.headers))
+		#print('type(self.headers)')
 		for i in self.headers :
 			self.env[i] = self.headers.get(i,'')
 
@@ -203,9 +209,10 @@ class Server :
 			self.client.sendall(res)
 			#self.life -= 1
 		finally :
+			self.client.close()
 			f_log.info('reponse done......')
 			s_log.info('reponse done......')
-			self.client.close()
+			
 			#if self.life < 1 :
 			#	self.server.close()
 
