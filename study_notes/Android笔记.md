@@ -28,7 +28,7 @@
 
 开发环境的准备介绍到这里先。
 
-
+哇，官方网站的教程是支持中文的呀。[官方教程](https://developer.android.com/training/basics/firstapp/building-ui.html)
 
 ### Android Studio介绍
 
