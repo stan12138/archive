@@ -13,7 +13,7 @@
 大概应该是这样的:
 
 1.  我们需要一个目录作为db数据的目录，可惜这个目录并不会自动创建，我们可以自己建一个data/db
-2.  cd进入mongodb的目录下的bin文件夹，然后执行`mongod --dpath d:\data\db`，此时你应该可以看到db下出现了很多文件，并且命令行也输出了很多信息
+2.  cd进入mongodb的目录下的bin文件夹，然后执行`mongod --dbpath d:\data\db`，此时你应该可以看到db下出现了很多文件，并且命令行也输出了很多信息
 3.  加入环境变量，方便使用。在系统环境变量里新建一个，名字自定，如:`MONGODB_HOME`，值是mongodb的目录一直到bin的上一层，例如`D:\ProgramFile\MongoDB\Server\3.4`，然后编辑系统的path，在后面添加`%MONGODB_HOME%\bin;`，注意path的每一个值都是用；分割的，最后一个也要使用;所以万一前面一个少了;你要记得自己加上，你应该能看出来吧，MONGODB_HOME就是被当作了一个变量，然后使用%标识等等
 4.  加入windows服务，这一步我执行了，但是我在服务中并没有找到mongodb，但是至少我的确成功设置了日志文件。我们应该在data下再新建一个dbConf的文件夹，并在里面新建一个空白文件，叫mongodb.log。接下来在管理员命令行输入：`mongod.exe --bind_ip 127.0.0.1 --logpath "D:\ProgramFile\data\dbConf\mongodb.log" --logappend --dbpath "D:\ProgramFile\data\db" --port 27017 --directoryperdb --serviceName MongoDB -install`注意改一下该改的目录。他们说接下来输入services.msc就可以看到弹出来的服务中就有mongodb但是，我并未发现
 5.  我们该如何启动mongodb，打开管理员命令行，输入`net start MongoDB`，自己看一下，信息正常就说明应该是开启成功了。
