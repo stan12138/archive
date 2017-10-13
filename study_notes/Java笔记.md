@@ -1136,7 +1136,7 @@ java语言中，引用分四个等级，常见的创建实例，赋给引用变�
 
 看表，有一些没有说，后面会提到。
 
-![修饰符](D:\html_file\images\修饰符.PNG)
+![修饰符](images\修饰符.PNG)
 
 
 
@@ -1182,9 +1182,9 @@ Java的集合类是一个工具类，大概分为三种：Set，List，Map。第
 
 集合类并不是一个两个类，而是相当多的接口的集合，这些接口通过继承构成了继承树
 
-![第一个继承树](D:\html_file\images\继承树1.PNG)
+![第一个继承树](images\继承树1.PNG)
 
-![第二个继承树](D:\html_file\images\继承树2.PNG)
+![第二个继承树](images\继承树2.PNG)
 
 从上面可以看到，这是存在两个继承体系的，第一个继承树的父接口是Collection，下面产生了List，Set，Queue，但是这三个也有巨多的类型，我们最常用的是HashSet，ArrayList和HashMap
 
