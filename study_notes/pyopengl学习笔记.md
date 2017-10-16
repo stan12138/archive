@@ -7,11 +7,31 @@
 
 <font color="red"><b>最好的参考书是learnopengl_book,来自learnopengl.com</b></font>
 
+### 环境构建
+
+哇，之前竟然忘记记录一下我是怎么构建环境的，然后现在又费了九牛二虎之力去重新翻看youtube
+
+地址就不粘了，去github上，我fork了一个opengl的教程，里面的readme里面给了作者的youtube链接
+
+我并不清楚为什么要使用glfw，然后作者又开了一系列新的教程，使用glet
+
+记得最初的时候网上推荐使用glut，现在说glut过时了，于是用了glfw，至于glet又是什么我也不知道
+
+我只知道他们是一系列用于窗口创建和事件管理的库。
+
+好了，废话不多说。
+
+`pip install glfw`然后是`pip install pyopengl`
+
+的确有一个pyglfw，但是我们要的不是它
+
+然后运行你的程序，十之八九你会发现并不行。此时去glfw的官网，下载64位的glfw安装包，解压，把lib-vc2015里面的glfw3.dll文件拷贝至c盘的windows文件夹下，即可。
 
 
-首先很有必要搞清GLSL的语法。 
 
 ### GLSL
+
+首先很有必要搞清GLSL的语法。 
 
 ##### 基本数据类型
 
@@ -443,6 +463,7 @@ mipmaps, 这个是用来控制视角缩放时texture的过度问题的，这个�
 
 
 算了，我不想再写纹理了，发现了一个博客，基本上就是我现在看的书的英文译文：[参考博客](http://blog.csdn.net/ziyuanxiazai123/article/category/2107037/3)
+
 
 
 ​	
