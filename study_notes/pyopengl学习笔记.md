@@ -4,8 +4,9 @@
 >
 > -- 17.6.22
 
-
 <font color="red"><b>最好的参考书是learnopengl_book,来自learnopengl.com</b></font>
+
+发现了一个博客，基本上就是我现在看的书的英文译文：[参考博客](http://blog.csdn.net/ziyuanxiazai123/article/category/2107037/3)
 
 ### 环境构建
 
@@ -258,7 +259,7 @@ if __name__ == "__main__":
 
 从这里其实可以看出有了这个函数程序会自动按照间隔和起始偏移量从缓存中取出所有的数据，传递到着色器中。  
 
-至于ctypes.c_void_p(0)，ctypes.c_void_p(12)为什么要这样写，记住必须是c类型就好了，为什么是12不需要解释吧。  
+至于ctypes.c_void_p(0)，ctypes.c_void_p(12)为什么要这样写，记住必须是c类型就好了（这里是经过测试的），为什么是12不需要解释吧。  
 
 其实，还用另外一种写法，他会在着色器源码中为in变量再加一个layout(location=0),layout(location=1)诸如此类的描述符，这样可以让他省掉position = glGetAttribLocation(shader,'position')，直接在glVertexAttribPointer(position,3,GL_FLOAT,GL_FALSE,24,ctypes.c_void_p(0))中使用0代替position，详细的代码如下：
 
@@ -282,7 +283,100 @@ glEnableVertexAttribArray(0)
 
 但是，我不太喜欢，也不完全理解，所以我拒绝使用这种方法。
 
-### 绘制  
+<u>再次声明，注意一点：数据类型是float32时，每个数据是4字节，而不是8字节，我在这个问题上已经吃过很多亏了</u>
+
+### 使用EBO绘制矩形
+
+这里不做很多的解释，只提供一个代码，代码里面省略了shader_loader的代码，和shader，两个shader都很简单，颜色都是一样的，没有传入颜色数据
+
+~~~python
+# -*- coding: utf-8 -*-
+"""
+Created on Tue Oct 17 18:05:10 2017
+
+@author: stan han
+"""
+
+import glfw
+from OpenGL.GL import *
+from OpenGL.GL import shaders
+import OpenGL.GL
+from numpy import array,float32,uint32,pi
+from shader_loader import My_shader
+
+def main() :
+    
+    if not glfw.init() :
+        return
+    window = glfw.create_window(600,600,'my window',None,None)
+    if not window :
+        glfw.terminate()
+        return
+    glfw.make_context_current(window)
+    
+    point = array([-0.5,0.5,0,   0.5,0.5,0, 0.5,-0.5,0,  -0.5,-0.5,0],dtype=float32)
+    index = array([0,1,2,2,3,0],dtype=uint32)
+    shader = My_shader('v.vs','f.frags')
+    shader.use()
+    
+    vbo = glGenBuffers(1)
+    glBindBuffer(GL_ARRAY_BUFFER,vbo)
+    glBufferData(GL_ARRAY_BUFFER,4*len(point),point,GL_STATIC_DRAW)
+    
+    ebo = glGenBuffers(1)
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,ebo)
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER,4*len(index),index,GL_STATIC_DRAW)
+    
+    glVertexAttribPointer(0,3,GL_FLOAT,GL_FALSE,3*4,ctypes.c_void_p(0))
+    glEnableVertexAttribArray(0)
+    
+    glClearColor(0.2,0.3,0.2,1.0)
+    #glEnable(GL_DEPTH_TEST)
+    glPolygonMode(GL_FRONT_AND_BACK,GL_LINE)
+    
+    while not glfw.window_should_close(window) :
+        glfw.poll_events()
+        glClear(GL_COLOR_BUFFER_BIT)
+        
+        glDrawElements(GL_TRIANGLES,6,GL_UNSIGNED_INT,None)
+        
+        glfw.swap_buffers(window)
+        
+    glfw.terminate()
+    
+    
+if __name__ == "__main__" :
+    main()
+~~~
+
+在这一段代码里，我们要注意，基本上除了我们添加了一个EBO的buffer，并且把绘制方式从glDrawArrays换成了glDrawElements之外，并没有太多的区别，这里绝对要注意的一个问题是，glDrawElements的最后一个参数，按照我看的资料上面说是偏置，应该设置为0，但是事实上，在python里，如果你设置为0，将会啥也不显示，必须设置为None
+
+在接下来的一块里，我要详细说明一下重要函数的参数意义
+
+### 参数
+
+`glBufferData(GL_ARRAY_BUFFER,4*len(point),point,GL_STATIC_DRAW)`
+
+这个函数是为了向buffer里面传入参数，第一个是类型，基本上都是GL_ARRAY_BUFFER，第二个是数据的总字节数，还是那句话，float32每个数据是4字节，而不是8，第三个参数是数据，第四个参数指定了你想把这些数据设置为什么类型，或者说想让显卡怎么管理这些数据，GL_STATIC_DRAW意味着很少改动，GL_DYNAMIC_DRAW常改变，GL_STREAM_DRAW每次绘制时都会改变，我们常用第一种
+
+`glVertexAttribPointer(0,3,GL_FLOAT,GL_FALSE,3*4,ctypes.c_void_p(0))`
+
+这个参数是一个指示器，告诉显卡数据的结构。第一个参数是我们想设置哪一个数据，如果我们使用了layout的话，可能会是0，1这样的数字就可以，否则的话我们需要先用`glGetAttribLocation(shader,'position')`这个函数获得着色器内变量的引用，然后把返回值作为第一个参数。第二个参数说明每一个顶点有几个分量，我们通常给的数据都是3分量的，然后由着色器把它变成4分量的。第三个是类型。第四个是数据是否需要归一化，我们传入的数据一般已经转换到了0-1之间，就不需要了，设置为GL_FALSE即可。第五个数据是间隔，也就是第一个顶点的第一位数据与第二个顶点的第一位数据间隔是多少，三分量的情况下就是有三个数据间隔，每个4字节。第六个数据是数据在buffer里面的偏移，这里就是0，但必须是ctype
+
+`glDrawArrays(GL_TRIANGLES,0,3)`
+
+第一个参数是我们想绘制什么类型的对象。第二个指定我们从第几个顶点开始，一般是0，第三个是要绘制几个顶点。
+
+`glDrawElements(GL_TRIANGLES,6,GL_UNSIGNED_INT,None)`
+
+第二个参数是一共有几个顶点，第三个是类型，第四个是偏移，必须是None，但是在c++里面他们使用0
+
+最后说一下注意在ebo的时候，我们的顶点也应该是4字节的，大概GL_UNSIGNED_INT就是4字节的。
+
+
+
+### 绘制
+
 当这些工作完成之后，接下来需要的就是在主事件循环中绘制即可。  
 
 据我的观察，当没有索引数据时，换句话说只有一个三角形是，他们会使用glDrawArrays(GL_TRIANGLES, 0, 3)，当要使用索引绘制多个三角形时，他们会使用glDrawElements(GL_TRIANGLES,6,GL_UNSIGNED_INT,None)，至于这两个函数参数的意义我不多叙述。
@@ -403,31 +497,31 @@ if __name__ == '__main__' :
 
 vertex shader和fragment shader各自写一个文件，再定义一个shader类，它可以将shader源码文件读到字符串里面，然后编译连接成程序，并提供一个use方法。
 
+	__all__ = ['My_shader']
+	
 	from OpenGL.GL import *
 	import OpenGL.GL.shaders
 	
-	class Shader:
-	    def __init__(self, vertexShaderPath, fragmentShaderPath):
-	        vertexFile = open(vertexShaderPath, 'r')
-	        vertexShaderSource = []
-	        for line in vertexFile.readlines():
-	            vertexShaderSource.append(line)
-	        vertexFile.close()
-	        vertexShaderSource = ''.join(vertexShaderSource)
 	
-	        fragmentFile = open(fragmentShaderPath, 'r')
-	        fragmentShaderSource = []
-	        for line in fragmentFile.readlines():
-	            fragmentShaderSource.append(line)
-	        fragmentFile.close()
-	        fragmentShaderSource = ''.join(fragmentShaderSource)
+	class My_shader:
+	    
+	    def __init__(self,v_path,f_path) :
+	        
+	        with open(v_path,'r') as v_file :
+	            v_source = v_file.read()
 	
-	        vertexShader = OpenGL.GL.shaders.compileShader(vertexShaderSource, GL_VERTEX_SHADER)
-	        fragmentShader = OpenGL.GL.shaders.compileShader(fragmentShaderSource, GL_FRAGMENT_SHADER)
-	        self.shader = OpenGL.GL.shaders.compileProgram(vertexShader, fragmentShader)
 	
-	    def Use(self):
+	        with open(f_path,'r') as f_file :
+	            f_source = f_file.read()
+	
+	
+	        v_shader = OpenGL.GL.shaders.compileShader(v_source,GL_VERTEX_SHADER)
+	        f_shader = OpenGL.GL.shaders.compileShader(f_source,GL_FRAGMENT_SHADER)
+	        self.shader = OpenGL.GL.shaders.compileProgram(v_shader, f_shader)
+	
+	    def use(self) :
 	        glUseProgram(self.shader)
+	
 
 这个很简单明白，不再细说。  
 
@@ -437,7 +531,55 @@ texture的坐标系为左下角为（0，0）的笛卡尔坐标系，范围为0~
 
 首先，我们必须改造顶点数据，在坐标，颜色之外再增加一个两分量的对应的texture的坐标。  
 
-##### 其它相关设置  
+#### 纹理包装
+
+纹理包装指定了如果坐标超出了范围，我们应该如何扩展纹理图片。
+
+-   `GL_REPEAT`，默认行为
+-   `GL_MIRRORED_REPEAT`，以镜像的方式重复
+-   `GL_CLAMP_TO_EDGE`，把边缘拉长
+-   `GL_CLAMP_TO_BORDER`，超出范围的统一指定为用户给出的颜色
+
+包括下面的一些，我们都是使用`glTexParameter*`函数设置，这里是i
+
+`glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_S,GL_MIRRORED_REPEAT)`
+
+第一个参数说明texture是几维的，我们可以分别设置垂直方向和水平方向，通过第二个参数，最后一个字母分别是S或T。最后一个就不说了
+
+#### 纹理滤波器
+
+还记得双线性内插法吗？差不多是同样的意思，为了解决坐标点不是整数的问题，可以指定两种方法，线性或者是近邻，同时可以为缩放各自指定不同的方法。
+
+`GL_LINEAR`和`GL_NEAREST`
+
+`glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)`
+
+我们可以通过第二个参数分别设置缩放两种行为，`MAG`是放大，`MIN`是缩小
+
+##### 纹理映射
+
+当一个图形距离我们很远的时候，我们是没有必要原样计算纹理的，因为已经看不清了，我们可以通过纹理映射产生一系列的不同尺寸纹理，然后在不同的距离应用不同的纹理。
+
+这种情况下产生的mipmap实际上是一系列的纹理，每一个的面积都是前者的开根，所以我们在滤波的时候要选择两种方式，首先，我们应该如何选择合适的纹理，是选择最接近的纹理还是在相邻两个纹理之间插值产生新的纹理，然后还要决定对于得到的纹理，我们如何滤波，所以：
+
+`GL_NEAREST_MIPMAP_NEAREST`
+
+`GL_LINEAR_MIPMAP_NEAREST`
+
+这两个都是选择最接近的纹理，然后滤波
+
+`GL_NEAREST_MIPMAP_LINEAR`
+
+`GL_LINEAR_MIPMAP_LINEAR`
+
+这两个是插值得到新纹理
+
+注意纹理映射只能用在缩小的时候，而绝对不能是放大
+
+`glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_NEAREST)`
+
+#### 纹理使用步骤
+
 首先要为texture分配一个ID：`texture = glGenTextures(1)`.  
 
 然后是绑定：`glBindTexture(GL_TEXTURE_2D,texture)`  
@@ -448,11 +590,6 @@ texture的坐标系为左下角为（0，0）的笛卡尔坐标系，范围为0~
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT)
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)	
-其中的前两个设置如果图片太小，在两个轴的方向各自做什么操作，这里设置了重复，另外还有镜面重复，拉伸，填充等方法，自行查看，特别的填充的话是要指定填充颜色的，所以必须使用额外的函数  
-
-后两者指定了坐标点的采样方法，还记得双线性内插法吗？差不多是同样的意思，为了解决坐标点不是整数的问题，可以指定两种方法，线性或者是近邻，同时可以为缩放各自指定不同的方法。具体不再细说。  
-
-mipmaps, 这个是用来控制视角缩放时texture的过度问题的，这个参数完全是通过filter设定的，换句话说，只需要`glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)`的最后一个参数设置为GL_LINEAR_MIPMAP_LINEAR即可
 ##### 载入数据
 
 	image = Image.open('../textures/wall.jpg')
@@ -461,8 +598,13 @@ mipmaps, 这个是用来控制视角缩放时texture的过度问题的，这个�
 	glGenerateMipmap(GL_TEXTURE_2D)
 	glBindTexture(GL_TEXTURE_2D, 0)
 
+`glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 512, 512, 0, GL_RGB, GL_UNSIGNED_BYTE, img_data)`
 
-算了，我不想再写纹理了，发现了一个博客，基本上就是我现在看的书的英文译文：[参考博客](http://blog.csdn.net/ziyuanxiazai123/article/category/2107037/3)
+第一个参数是纹理类型。第二个是如果你想手工设置纹理映射级别，那么你可以指定纹理的映射级别，这里设为0即可。第三个是格式。第四五个是宽高。第六个永远是0。第七八个也是格式。最后一个是数据
+
+
+
+
 
 
 
