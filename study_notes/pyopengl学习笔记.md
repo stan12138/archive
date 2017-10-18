@@ -498,30 +498,30 @@ if __name__ == '__main__' :
 vertex shader和fragment shader各自写一个文件，再定义一个shader类，它可以将shader源码文件读到字符串里面，然后编译连接成程序，并提供一个use方法。
 
 	__all__ = ['My_shader']
-	
+
 	from OpenGL.GL import *
 	import OpenGL.GL.shaders
-	
-	
+
+
 	class My_shader:
-	    
+
 	    def __init__(self,v_path,f_path) :
-	        
+
 	        with open(v_path,'r') as v_file :
 	            v_source = v_file.read()
-	
-	
+
+
 	        with open(f_path,'r') as f_file :
 	            f_source = f_file.read()
-	
-	
+
+
 	        v_shader = OpenGL.GL.shaders.compileShader(v_source,GL_VERTEX_SHADER)
 	        f_shader = OpenGL.GL.shaders.compileShader(f_source,GL_FRAGMENT_SHADER)
 	        self.shader = OpenGL.GL.shaders.compileProgram(v_shader, f_shader)
 	
 	    def use(self) :
 	        glUseProgram(self.shader)
-	
+
 
 这个很简单明白，不再细说。  
 
@@ -604,8 +604,663 @@ texture的坐标系为左下角为（0，0）的笛卡尔坐标系，范围为0~
 
 
 
+我们需要使用同样的方式获取纹理的坐标。然后在应用的时候，主要是位于片元着色器。我们可以声明一个`uniform sampler2D`的变量，名字随意，系统会自动把纹理传递给它，然后只需要把纹理赋值给片元着色器的输出即可`final_color = texture(te,texc);`，这里的texture是内置的专门处理纹理的函数，第一个参数是纹理，第二个是坐标。
+
+这里给出一个参考代码：
+
+~~~python
+# -*- coding: utf-8 -*-
+"""
+Created on Tue Oct 17 18:05:10 2017
+
+@author: stan han
+"""
+
+import glfw
+from OpenGL.GL import *
+from OpenGL.GL import shaders
+import OpenGL.GL
+from numpy import array,float32,uint8,uint32,pi
+from shader_loader import My_shader
+from PIL import Image
+
+def main() :
+    
+    if not glfw.init() :
+        return
+    window = glfw.create_window(600,600,'my window',None,None)
+    if not window :
+        glfw.terminate()
+        return
+    glfw.make_context_current(window)
+    
+    point = array([-0.5,0.5,0,0,1,   0.5,0.5,0,1,1,  0.5,-0.5,0,1,0,  -0.5,-0.5,0,0,0],dtype=float32)
+    index = array([0,1,2,2,3,0],dtype=uint32)
+    shader = My_shader('v.vs','f.frags')
+    shader.use()
+    
+    vbo = glGenBuffers(1)
+    glBindBuffer(GL_ARRAY_BUFFER,vbo)
+    glBufferData(GL_ARRAY_BUFFER,4*len(point),point,GL_STATIC_DRAW)
+    
+    ebo = glGenBuffers(1)
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,ebo)
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER,4*len(index),index,GL_STATIC_DRAW)
+    
+    texture = glGenTextures(1)
+    glBindTexture(GL_TEXTURE_2D,texture)
+    
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT)
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT)
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
+    
+    image = Image.open('textures/wall.jpg')
+    image = array(image,dtype=uint8)
+    height,width,c = image.shape
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, image)
+    glGenerateMipmap(GL_TEXTURE_2D)
+    
+    glVertexAttribPointer(0,3,GL_FLOAT,GL_FALSE,5*4,ctypes.c_void_p(0))
+    glEnableVertexAttribArray(0)
+    
+    glVertexAttribPointer(1,2,GL_FLOAT,GL_FALSE,5*4,ctypes.c_void_p(12))
+    glEnableVertexAttribArray(1)
+    
+    glClearColor(0.2,0.3,0.2,1.0)
+    #glEnable(GL_DEPTH_TEST)
+    #glPolygonMode(GL_FRONT_AND_BACK,GL_LINE)
+    
+    while not glfw.window_should_close(window) :
+        glfw.poll_events()
+        glClear(GL_COLOR_BUFFER_BIT)
+        
+        glDrawElements(GL_TRIANGLES,6,GL_UNSIGNED_INT,None)
+        
+        glfw.swap_buffers(window)
+        
+    glfw.terminate()
+    
+    
+if __name__ == "__main__" :
+    main()
+~~~
+
+~~~
+#version 330
+
+layout (location=0) in vec3 position;
+layout (location=1) in vec2 tex;
+
+out vec2 texc;
+
+void main()
+{
+	
+	gl_Position = vec4(position.x,position.y,position.z,1.0f);
+	texc = tex;
+
+}
+~~~
+
+~~~
+#version 330
+
+out vec4 final_color;
+
+in vec2 texc;
+
+uniform sampler2D te;
+
+void main()
+{
+	final_color = texture(te,texc);
+}
+~~~
+
+当然我们还可以让颜色和纹理混合，只需要通过普通的方式拿到颜色，变成vec4，然后和texture函数相乘即可。
+
+#### 纹理单元
+
+名字怪怪的。
+
+我们为什么将纹理设置为了uniform，但是却没有为它通过glUniform设置值，这就是纹理单元在起作用，绝大多数显卡会默认设置纹理单元为0，总之效果就是自动赋值。我们可以为其设置位置，从而实现多重纹理。
+
+纹理单元类似于一个存储格子，我们每激活一个格子就可以绑定一个buffer，存储一张纹理，0号是默认被激活的。
+
+步骤：
+
+首先激活纹理单元：
+
+~~~python
+    texture1 = glGenTextures(1)
+    texture2 = glGenTextures(1)
+    
+    glActiveTexture(GL_TEXTURE0)
+    glBindTexture(GL_TEXTURE_2D,texture1)
+    
+    glActiveTexture(GL_TEXTURE1)
+    glBindTexture(GL_TEXTURE_2D,texture2)
+~~~
+
+然后载入图像，别无二致
+
+接下来设置pointer：
+
+~~~python
+    glUniform1i(glGetUniformLocation(shader.shader,'te'),0)
+    glUniform1i(glGetUniformLocation(shader.shader,'te1'),1)
+~~~
+
+然后改写片元着色器
+
+~~~python
+#version 330
+
+out vec4 final_color;
+
+in vec2 texc;
+in vec4 co;
+
+uniform sampler2D te;
+uniform sampler2D te1;
+void main()
+{
+	final_color = mix(texture(te,texc)*co,texture(te1,texc),0.2);
+}
+~~~
+
+要注意的地方是，glUniform1i的后缀是数字1然后是i，而不是字母l
+
+wahaha，真神奇，很早之前我在做立方体贴图的时候就出现了某些图片会严重变形的问题，变形的情况还比较复杂，而不是单纯的颠倒。现在我又一次碰到了，然后我解决了。我无法解释为什么，但是你只要记得就好，如果图片的长宽不是2的N次方，就会出现变形，差距越大，变形越严重。
+
+#### 图片导入技术
+
+图片的导入并没有之前的代码那么简单
+
+我们要分情况来说，首先基本上所有的图片，我们都需要做一下上下倒置的工作
+
+然后对于普通格式的图片，或者是没有alpha通道的PNG图片，我们需要的是获取尺寸信息，然后转换为二进制：
+
+~~~python
+    image = Image.open('textures/wall.jpg')
+    image = image.transpose(Image.FLIP_TOP_BOTTOM)
+    
+    #image = array(image,dtype=uint8)
+    height,width= image.height,image.width
+    
+    image = image.tobytes()
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, image)
+    glGenerateMipmap(GL_TEXTURE_2D)
+~~~
+
+并不需要numpy参与，就可以完成
+
+然后对于	有alpha通道的PNG图片，我们需要额外增添一步转换为RGBA的操作，并且数据导入到buffer的时候格式也要更改
+
+~~~python
+    image = Image.open("res/smiley.png")
+    #img_data = numpy.array(list(image.getdata()), numpy.uint8)
+    flipped_image = image.transpose(Image.FLIP_TOP_BOTTOM)
+    img_data = flipped_image.convert("RGBA").tobytes()
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, image.width, image.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, img_data)
+~~~
+
+#### 纹理混合技术
+
+特别要注意的是，由于采用了多个纹理，我们必须在做两次Bind，第一次在初始化纹理单元的时候，第二次在导入数据之后
+
+虽然很长，这里还是再给出一个例子：
+
+~~~python
+# -*- coding: utf-8 -*-
+"""
+Created on Tue Oct 17 18:05:10 2017
+
+@author: stan han
+"""
+
+import glfw
+from OpenGL.GL import *
+from OpenGL.GL import shaders
+import OpenGL.GL
+from numpy import array,float32,uint8,uint32,pi
+from shader_loader import My_shader
+from PIL import Image
+
+def main() :
+    
+    if not glfw.init() :
+        return
+    window = glfw.create_window(600,600,'my window',None,None)
+    if not window :
+        glfw.terminate()
+        return
+    glfw.make_context_current(window)
+    
+    point = array([-0.5,0.5,0,1,0,0,0,1,   0.5,0.5,0,0,1,0,1,1,  0.5,-0.5,0,0,0,1,1,0,  -0.5,-0.5,0,1,1,0,0,0],dtype=float32)
+    index = array([0,1,3,1,2,3],dtype=uint32)
+    shader = My_shader('v.vs','f.frags')
+    shader.use()
+    
+    vbo = glGenBuffers(1)
+    glBindBuffer(GL_ARRAY_BUFFER,vbo)
+    glBufferData(GL_ARRAY_BUFFER,4*len(point),point,GL_STATIC_DRAW)
+    
+    ebo = glGenBuffers(1)
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,ebo)
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER,4*len(index),index,GL_STATIC_DRAW)
+    
+    texture1 = glGenTextures(1)
+    
+    
+    glActiveTexture(GL_TEXTURE0)
+    glBindTexture(GL_TEXTURE_2D,texture1)
+    
+    image = Image.open('textures/wall.jpg')
+    height,width = image.height,image.width
+    image = image.transpose(Image.FLIP_TOP_BOTTOM)
+    image = image.convert("RGB").tobytes()
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, image)
+    glGenerateMipmap(GL_TEXTURE_2D)
+    
+    glBindTexture(GL_TEXTURE_2D,texture1)
+    
+    
+    
+    texture2 = glGenTextures(1)
+    
+    
+    glActiveTexture(GL_TEXTURE1)
+    glBindTexture(GL_TEXTURE_2D,texture2)
+    image1 = Image.open('textures/smile.png')
+    image2 = image1.transpose(Image.FLIP_TOP_BOTTOM)
+    image2 = image2.convert("RGBA").tobytes()
+    height,width = image1.height,image1.width
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, image2)
+    glGenerateMipmap(GL_TEXTURE_2D)    
+    
+    glBindTexture(GL_TEXTURE_2D,texture2)
+    
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT)
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT)
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
+    
+
+    
+
+    
+    glVertexAttribPointer(0,3,GL_FLOAT,GL_FALSE,8*4,ctypes.c_void_p(0))
+    glEnableVertexAttribArray(0)
+    
+    glVertexAttribPointer(1,2,GL_FLOAT,GL_FALSE,8*4,ctypes.c_void_p(24))
+    glEnableVertexAttribArray(1)
+    
+    glVertexAttribPointer(2,3,GL_FLOAT,GL_FALSE,8*4,ctypes.c_void_p(12))
+    glEnableVertexAttribArray(2)
+    
+    glUniform1i(glGetUniformLocation(shader.shader,'te'),0)
+    glUniform1i(glGetUniformLocation(shader.shader,'te1'),1)
+    
+    glClearColor(0.2,0.3,0.2,1.0)
+    #glEnable(GL_DEPTH_TEST)
+    #glPolygonMode(GL_FRONT_AND_BACK,GL_LINE)
+    
+    while not glfw.window_should_close(window) :
+        glfw.poll_events()
+        glClear(GL_COLOR_BUFFER_BIT)
+        
+        glDrawElements(GL_TRIANGLES,6,GL_UNSIGNED_INT,None)
+        
+        glfw.swap_buffers(window)
+        
+    glfw.terminate()
+    
+    
+if __name__ == "__main__" :
+    main()
+~~~
+
+所以，纹理的处理变得越来越长，大概很快就要在写一个帮助的模块了。
 
 
 
+纹理部分暂时到此结束
 
-​	
+
+
+### 坐标系统
+
+在这里，最重要的变换矩阵有三个，model,view,projection
+
+第一个负责从模型坐标空间转换至世界坐标空间
+
+第二个负责从世界坐标空间转换至相机坐标空间
+
+第三个负责投影
+
+总之在他的世界里，我们应该对物体的坐标进行这样的转换`gl_Position = projection*view*model*vec4(position.x,position.y,position.z,1.0f);`
+
+暂时我并不打算继续深入这一部分，乃至完成相机，而是将直接学习光照，所以这里将给出一个例子,作为结束：
+
+~~~python
+# -*- coding: utf-8 -*-
+"""
+Created on Tue Oct 17 18:05:10 2017
+
+@author: stan han
+"""
+
+import glfw
+from OpenGL.GL import *
+from OpenGL.GL import shaders
+import OpenGL.GL
+from numpy import array,float32,uint8,uint32,pi
+from shader_loader import My_shader
+from PIL import Image
+import pyrr
+from math import radians
+from time import time
+
+
+def main() :
+	
+	
+	if not glfw.init() :
+		return
+	window = glfw.create_window(600,600,'my window',None,None)
+	if not window :
+		glfw.terminate()
+		return
+	glfw.make_context_current(window)
+	point = [-0.5, -0.5, 0.5, 0.0, 0.0,
+            0.5, -0.5, 0.5, 1.0, 0.0,
+            0.5, 0.5, 0.5, 1.0, 1.0,
+            -0.5, 0.5, 0.5, 0.0, 1.0,
+
+            -0.5, -0.5, -0.5, 0.0, 0.0,
+            0.5, -0.5, -0.5, 1.0, 0.0,
+            0.5, 0.5, -0.5, 1.0, 1.0,
+            -0.5, 0.5, -0.5, 0.0, 1.0,
+
+            0.5, -0.5, -0.5, 0.0, 0.0,
+            0.5, 0.5, -0.5, 1.0, 0.0,
+            0.5, 0.5, 0.5, 1.0, 1.0,
+            0.5, -0.5, 0.5, 0.0, 1.0,
+
+            -0.5, 0.5, -0.5, 0.0, 0.0,
+            -0.5, -0.5, -0.5, 1.0, 0.0,
+            -0.5, -0.5, 0.5, 1.0, 1.0,
+            -0.5, 0.5, 0.5, 0.0, 1.0,
+
+            -0.5, -0.5, -0.5, 0.0, 0.0,
+            0.5, -0.5, -0.5, 1.0, 0.0,
+            0.5, -0.5, 0.5, 1.0, 1.0,
+            -0.5, -0.5, 0.5, 0.0, 1.0,
+
+            0.5, 0.5, -0.5, 0.0, 0.0,
+            -0.5, 0.5, -0.5, 1.0, 0.0,
+            -0.5, 0.5, 0.5, 1.0, 1.0,
+            0.5, 0.5, 0.5, 0.0, 1.0]
+	point = array(point,dtype=float32)
+	#point = array([-0.5,0.5,0,1,0,0,0,1,   0.5,0.5,0,0,1,0,1,1,  0.5,-0.5,0,0,0,1,1,0,  -0.5,-0.5,0,1,1,0,0,0],dtype=float32)
+	
+	index = [0, 1, 2, 2, 3, 0,
+               4, 5, 6, 6, 7, 4,
+               8, 9, 10, 10, 11, 8,
+               12, 13, 14, 14, 15, 12,
+               16, 17, 18, 18, 19, 16,
+               20, 21, 22, 22, 23, 20]
+	index = array(index,dtype=uint32)
+	
+	#index = array([0,1,3,1,2,3],dtype=uint32)
+	shader = My_shader('v.vs','f.frags')
+	shader.use()
+	
+	vb = pyrr.matrix44.create_from_y_rotation(radians(70))
+	
+	model = pyrr.matrix44.create_from_x_rotation(radians(-55))
+	view = pyrr.matrix44.create_from_translation(array([0,0,-6]))
+	projection = pyrr.matrix44.create_perspective_projection_matrix(45,1,0.1,100)
+	
+	
+	
+	
+	vbo = glGenBuffers(1)
+	glBindBuffer(GL_ARRAY_BUFFER,vbo)
+	glBufferData(GL_ARRAY_BUFFER,4*len(point),point,GL_STATIC_DRAW)
+	
+	ebo = glGenBuffers(1)
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,ebo)
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER,4*len(index),index,GL_STATIC_DRAW)
+	
+	texture1 = glGenTextures(1)
+	
+	
+	glActiveTexture(GL_TEXTURE0)
+	glBindTexture(GL_TEXTURE_2D,texture1)
+	
+	image = Image.open('textures/container.jpg')
+	height,width = image.height,image.width
+	image = image.transpose(Image.FLIP_TOP_BOTTOM)
+	image = image.convert("RGB").tobytes()
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, image)
+	glGenerateMipmap(GL_TEXTURE_2D)
+	
+	glBindTexture(GL_TEXTURE_2D,texture1)
+	
+	
+	
+	texture2 = glGenTextures(1)
+	
+	
+	glActiveTexture(GL_TEXTURE1)
+	glBindTexture(GL_TEXTURE_2D,texture2)
+	image1 = Image.open('textures/smile.png')
+	image2 = image1.transpose(Image.FLIP_TOP_BOTTOM)
+	image2 = image2.convert("RGBA").tobytes()
+	height,width = image1.height,image1.width
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, image2)
+	glGenerateMipmap(GL_TEXTURE_2D)	
+	
+	glBindTexture(GL_TEXTURE_2D,texture2)
+	
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT)
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT)
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
+	
+
+	
+
+	
+	glVertexAttribPointer(0,3,GL_FLOAT,GL_FALSE,5*4,ctypes.c_void_p(0))
+	glEnableVertexAttribArray(0)
+	
+	glVertexAttribPointer(1,2,GL_FLOAT,GL_FALSE,5*4,ctypes.c_void_p(12))
+	glEnableVertexAttribArray(1)
+	
+	#glVertexAttribPointer(2,3,GL_FLOAT,GL_FALSE,8*4,ctypes.c_void_p(12))
+	#glEnableVertexAttribArray(2)
+	
+	
+	m_loc = glGetUniformLocation(shader.shader,'model')
+	glUniformMatrix4fv(m_loc,1,GL_FALSE,model)
+	
+	my_loc = glGetUniformLocation(shader.shader,'modely')
+	glUniformMatrix4fv(my_loc,1,GL_FALSE,vb)
+	
+	v_loc = glGetUniformLocation(shader.shader,'view')
+	glUniformMatrix4fv(v_loc,1,GL_FALSE,view)
+	
+	p_loc = glGetUniformLocation(shader.shader,'projection')
+	glUniformMatrix4fv(p_loc,1,GL_FALSE,projection)
+	
+	
+	
+	glUniform1i(glGetUniformLocation(shader.shader,'te'),0)
+	glUniform1i(glGetUniformLocation(shader.shader,'te1'),1)
+	
+	glClearColor(0.2,0.3,0.2,1.0)
+	glEnable(GL_DEPTH_TEST)
+	#glPolygonMode(GL_FRONT_AND_BACK,GL_LINE)
+	start = time()
+	while not glfw.window_should_close(window) :
+		glfw.poll_events()
+		glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT)
+		
+		model = pyrr.matrix44.create_from_x_rotation(radians((time()-start)*10))
+		m_loc = glGetUniformLocation(shader.shader,'model')
+		glUniformMatrix4fv(m_loc,1,GL_FALSE,model)
+		glDrawElementsInstanced(GL_TRIANGLES, len(index), GL_UNSIGNED_INT, None, 125000)
+		
+		glfw.swap_buffers(window)
+		
+	glfw.terminate()
+	
+	
+if __name__ == "__main__" :
+	main()
+  
+~~~
+
+shader：
+
+~~~c
+#version 330
+
+layout (location=0) in vec3 position;
+layout (location=1) in vec2 tex;
+
+out vec2 texc;
+
+
+
+uniform mat4 model;
+uniform mat4 modely;
+uniform mat4 view;
+uniform mat4 projection;
+
+
+void main()
+{
+	
+	gl_Position = projection*view*modely*model*vec4(position.x,position.y,position.z,1.0f);
+	texc = tex;
+
+}
+
+
+#version 330
+
+out vec4 final_color;
+
+in vec2 texc;
+
+
+uniform sampler2D te;
+uniform sampler2D te1;
+void main()
+{
+	final_color = mix(texture(te,texc),texture(te1,texc),0.2);
+}
+
+
+~~~
+
+
+
+注意，这里面涵盖了立方体的产生，双重纹理，旋转等
+
+
+
+### 光照
+
+反射可以使用颜色相乘来表示
+
+我们为了测试需要创建一个新的片元着色器：
+
+~~~c
+#version 330
+
+out vec4 final_color;
+
+in vec2 texc;
+
+uniform vec3 ocolor;
+uniform vec3 light;
+
+uniform sampler2D te;
+uniform sampler2D te1;
+void main()
+{
+	final_color = vec4(ocolor*light,1.0f);
+}
+~~~
+
+为了稍作简化，我们也重新修正了shader_loader
+
+~~~python
+__all__ = ['My_shader']
+
+from OpenGL.GL import *
+import OpenGL.GL.shaders
+
+
+class My_shader:
+    
+    def __init__(self,v_path,f_path) :
+        
+        with open(v_path,'r') as v_file :
+            v_source = v_file.read()
+
+
+        with open(f_path,'r') as f_file :
+            f_source = f_file.read()
+
+
+        v_shader = OpenGL.GL.shaders.compileShader(v_source,GL_VERTEX_SHADER)
+        f_shader = OpenGL.GL.shaders.compileShader(f_source,GL_FRAGMENT_SHADER)
+        self.shader = OpenGL.GL.shaders.compileProgram(v_shader, f_shader)
+
+    def use(self) :
+        glUseProgram(self.shader)
+
+    def setvec3(self,name,a,b,c) :
+        loc = glGetUniformLocation(self.shader,name)
+        glUniform3f(loc,a,b,c)
+~~~
+
+可以使用setvec3方法方便的设置光照颜色和物体的颜色
+
+#### 基础光照
+
+我们要学习的第一个光照模型是Phong光照模型，这个模型将光照分为三个部分：环境光(ambient)，漫反射(diffuse)，镜面反射(specular)
+
+##### 环境光
+
+环境光可以很复杂，也可以很简单。高级的要用到全局光照算法之类的进行模拟，很复杂，我们就不用这个了。我们选择最简单的，只是将光源乘上一个很小的因子就好:
+
+`ambient = 0.1*light`
+
+##### 漫反射
+
+简单的环境光并不是十分有意思，加入漫反射就会大有不同。
+
+计算漫反射，我们需要知道法向量，但是我们事实上并不方便直接计算法向量，因此我们会直接传入法向量，明显顶点会经过model的变换，那么法向量应该也做相应的变换，但是并没有这么简单，试想，在平移的情况下，如果法向量是(1,0,0)，那么难道沿y轴平移之后就应该是(1,y,0)吗？明显不是。那正确的表达应该是：`mat3 normalMatrix = mat3(transpose(inverse(view * model)));`
+
+至于推导，见[推导过程](http://blog.csdn.net/chenhittler/article/details/51348209)
+
+原理就是计算从表面上的点到灯的向量L，然后计算法向量，两者同时单位化，然后计算cos$\theta$
+
+如果角度大于90°就说明光无法照到上面，就应该设置为0
+
+所以漫反射因子应该是`max(dot(normal,lightdir),0.0);`
+
+漫反射因子和光源的乘积就是漫反射分量，与环境光叠加再乘上物体颜色就是得到的反射颜色
+
+例子暂时不写，等到写完镜面反射一起给出
+
+
+
