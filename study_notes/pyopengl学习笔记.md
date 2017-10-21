@@ -1175,6 +1175,118 @@ void main()
 
 
 
+okay，继续来进行这一部分，这一次将会连续进行，直至完成一个相机。
+
+再次说回坐标空间与矩阵变换。
+
+从模型空间到世界空间，完成的是如何将模型安置在世界坐标系中，我们可以进行模型的平移旋转，换句话说我们可以通过调整model矩阵实现模型的任意位置与姿态调整。
+
+当模型进入世界坐标空间，我们就可以在模型之外安置相机了。当然我们可以做任意的简化，例如直接将相机安置在原点处，保持标准姿态，那么将意味着我们几乎不需要什么变换，当然我们也可以平移相机。但是如果我们想实现一个相机，我们就必须考虑最复杂的状态，相机即不在原点，姿态也并非标准。这种情况下，所谓视变换，或者说从世界坐标系到相机坐标系的变换就是实现一个新的坐标系，以相机的指向为z轴负方向，相机的上为y轴正向，相机的正右方向为x轴正向。
+
+首先，我们要确定相机的指向，即forward向量，这个向量可以由两个坐标确定，即相机的位置pos，和目标的位置target，那么forward向量就是target-pos(注意这个方向实际上是z轴负向)
+
+然后我们要谋求右向量side，这里需要使用一点小的技巧，我们并不能明确up向量究竟是哪个，但是我们可以明确的知道，side垂直于up与forward确定的平面，那么我们实际上只需要知道这个平面上任意一个和forward不在同一条直线的一个向量就可以了，称之up1，只是单纯的调整up1和forward的夹角是毫无意义的，不会对相机姿态产生任何影响，但是当up1以forward为轴旋转的时候实际上是在调整相机的翻滚角
+
+当我们确定了大概的up1的时候，我们就可以使用二者确定最终的side
+
+当我们知道了side的时候，我们又可以确定真正的up
+
+大概的流程就是这样。
+
+总之在求view的过程中，变量一共有三个，pos,target,up1。如果我们考虑使用欧拉角来确定相机的姿态，那么相机的姿态会有三个决定量，分别是俯仰角pitch，偏航角yaw，翻滚角roll.
+
+考虑一下你就会发现up1决定roll，pos和target决定了一个平面，两者任意一个在平面内的非延长线方向的平移决定了pitch，垂直平面的移动决定了yaw。总之pos和target具有同样的地位，可以决定yaw和pitch
+
+现在说一下计算，forward和up1的叉积是符合右手坐标系的，自己考虑一下，x和y叉乘得到的是z，而forward是z轴的反向，up1代表y，所以-z与y的叉积是x，也即cross(forward,up1)=side，注意单位化
+
+然后cross(-forward,side)=up
+
+至此新的x,y,z分别是side,up,-forward
+
+假设我们有一个变换矩阵p，世界坐标系中的a向量转换至相机坐标系中的新向量为a1，变换为pa = a1
+
+那么事实上我们可以考虑相机坐标系中的一组基，它们在世界坐标系中的表示其实就是我们算出的size,up和-forward，那么他们都可以通过与p相乘，得到自己在相机坐标系中的表示，毫无疑问，他们在自己空间中的表示就是标准单位向量，从而组成了单位矩阵E，稍作变换，我们可以知道p=invers(B)，B就是由side,up,-forward竖列组成的，仔细考虑一下，如果单纯这样组成`3*3`的矩阵，那么应该有点不太对，这意味着相机的原点和原空间的原点一致，所以我们需要一个`4*4`的矩阵，第四列是原点坐标，这是一个齐次坐标组成的矩阵
+$$
+\begin{vmatrix} 
+s[0] & up[0] & -forward[0] & pos[0] \\
+s[1] & up[1] & -forward[1] & pos[1] \\
+s[2] & up[2] & -forward[2] & pos[2] \\
+0 & 0 & 0 & 1 \\
+\end{vmatrix}
+$$
+对这个矩阵求逆即可
+
+投影矩阵，我们并没有什么实际操作上的需要，因此暂时推迟，利用view矩阵即可完成相机。
+
+上面的view矩阵是我们通过变换得到的，但是因为第一人称相机涉及到了欧拉角，所以我们还必须学会使用旋转的方式得到view矩阵。
+
+
+
+#### 第一人称相机
+
+我们应该将所有的相机控制分解，姿态角方面，我们应该控制俯仰角，偏航角，至于翻滚角是一种类似飞行器的操作，可以暂时忽略。
+
+我们还应该可以控制相机的位置坐标，于是可以分解为上下，左右和前后。
+
+在鼠标手势方面，我认为默认情况下鼠标不起作用，滚轮负责前后移动，等价于放大缩小操作；左键+鼠标的移动控制上下左右；ctrl+鼠标移动控制偏航和俯仰角。
+
+要解决的问题有两个：第一，鼠标与键盘事件接口；第二位置与角度映射方式
+
+##### glfw事件监听
+
+我不以标准的c++格式下的glfw来说，而是python下的glfw
+
+完成键盘的监听，我们需要注册一个handler，这个函数会接受5个参数，window,key,scancode,action,mode
+
+其中的key是一个数字，代表着不同的按键，action有两个值:glfw.PRESS和glfw.RELEASE，换句话说，当一个键被按下的时候，会接收到一个press，当被释放的时候也会接受到一个release
+
+我们需要注册`glfw.set_key_callback(window,handler)`
+
+我们需要的是：滚轮事件，key，鼠标移动，鼠标点击，所以一个示例是这样的：
+
+~~~python
+def key_handler(window,key,scancode,action,mode) :
+	#print(key,action)
+	if key == 341 and action == glfw.PRESS :
+		print('press ctrl..')
+	if key == 341 and action == glfw.RELEASE :
+		print('release ctrl...')
+def scroll_handler(window,xoffset,yoffset) :
+	print(xoffset,yoffset)
+	
+def mouse_button_handler(window,button,action,mods) :
+	if button == glfw.MOUSE_BUTTON_LEFT and action == glfw.PRESS :
+		print('press left')
+	elif  button == glfw.MOUSE_BUTTON_LEFT and action == glfw.RELEASE :
+		print('release left')
+		
+def mouse_move_handler(window,xpos,ypos) :
+	print(xpos,ypos)
+    
+ 	glfw.set_key_callback(window,key_handler)
+	glfw.set_scroll_callback(window,scroll_handler)
+	glfw.set_mouse_button_callback(window,mouse_button_handler)
+	glfw.set_cursor_pos_callback(window,mouse_move_handler)   
+~~~
+
+最后一部分应该写在window创建之后，这就很明显了。
+
+如果不够，接下来可能还会加。
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 ### 光照
 
 反射可以使用颜色相乘来表示
