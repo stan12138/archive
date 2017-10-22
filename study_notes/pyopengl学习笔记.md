@@ -491,37 +491,94 @@ if __name__ == '__main__' :
 
 我剔除了关于VAO的内容，其实VAO的使用代码并不复杂，但是我始终搞不懂VAO是干什么的，又是怎么做的，并且从上述代码可以看出没有它也可以，所以，我就暂时不加VAO，留待后续。
 
+现在说明一下什么是VAO，还有一些小的细节，我会在obj模型导入的部分做一些说明
+
+首先声明VAO可以说并不是一种绝对必不可少的存在，至少现在是，使用它更多是出于结构化，便于操作的角度执行的，以及一些优化等角度。
+
+当然，我说的这一切都是建立在我只载入一个物体的角度上实现的，我还没有做过导入多个模型或物体的尝试，但是我看了一些使用VAO完成多个物体导入的代码，结构很清晰，于是我决定开始使用VAO
+
+当我们使用VAO的时候基本上就是把VBO和EBO包装了起来，在之前，我们初始化一个VBO的缓存，然后存入数据，到之后的某个位置，我们会再使用pointer指定数据在VBO中的位置。这样的问题就在于，直至程序要进行渲染的时候他才知道缓存中的数据都代表了什么含义，这并不是一种很结构化很规范的方式。于是我们将引入VAO
+
+我们每设置一个VAO就相当于把VBO和EBO装进了一个箱子中，同时使用它的pointer指明数据的位置，然后当我们想进行绘制的时候，只需要再调用某一个VAO即可。
+
+我们首先就要把VBO和EBO什么的统一绑进VAO，然后完成导入数据，指示数据位置之后，我们应该解除VAO的绑定
+
+当你绘制的时候应该首先绑定VAO，然后绘制，绘制结束之后再解除绑定
+
+例如：
+
+~~~python
+	vao = glGenVertexArrays(1)
+	vbo = glGenBuffers(1)
+	ebo = glGenBuffers(1)
+
+	glBindVertexArray(vao)
+	glBindBuffer(GL_ARRAY_BUFFER,vbo)
+	glBufferData(GL_ARRAY_BUFFER,4*len(point),point,GL_STATIC_DRAW)
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8*4,ctypes.c_void_p(0))
+	glEnableVertexAttribArray(0)
+	glVertexAttribPointer(1,2,GL_FLOAT,GL_FALSE,8*4,ctypes.c_void_p(12))
+	glEnableVertexAttribArray(1)
+	glVertexAttribPointer(2,3,GL_FLOAT,GL_FALSE,8*4,ctypes.c_void_p(20))
+	glEnableVertexAttribArray(2)
+	
+	#glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,ebo)
+	#glBufferData(GL_ELEMENT_ARRAY_BUFFER,4*len(index),index,GL_STATIC_DRAW)
+	glBindVertexArray(0)
+~~~
+
+绘制：
+
+~~~python
+		glBindVertexArray(vao)
+		glDrawArrays(GL_TRIANGLES, 0, 36);
+		glBindVertexArray(0)
+~~~
+
+
+
 ### 结构化
 
 接下来的任务是创建一段代码，可以从文件中导入着色器，并经过类的封装使其更加易用。  
 
 vertex shader和fragment shader各自写一个文件，再定义一个shader类，它可以将shader源码文件读到字符串里面，然后编译连接成程序，并提供一个use方法。
 
-	__all__ = ['My_shader']
+~~~python
+# -*- coding: utf-8 -*-
+"""
+Created on Sat Jun 24 10:50:10 2017
 
-	from OpenGL.GL import *
-	import OpenGL.GL.shaders
+@author: stan han
+"""
+__all__ = ['My_shader']
 
-
-	class My_shader:
-
-	    def __init__(self,v_path,f_path) :
-
-	        with open(v_path,'r') as v_file :
-	            v_source = v_file.read()
-
-
-	        with open(f_path,'r') as f_file :
-	            f_source = f_file.read()
+from OpenGL.GL import *
+import OpenGL.GL.shaders
 
 
-	        v_shader = OpenGL.GL.shaders.compileShader(v_source,GL_VERTEX_SHADER)
-	        f_shader = OpenGL.GL.shaders.compileShader(f_source,GL_FRAGMENT_SHADER)
-	        self.shader = OpenGL.GL.shaders.compileProgram(v_shader, f_shader)
-	
-	    def use(self) :
-	        glUseProgram(self.shader)
+class My_shader:
+    
+    def __init__(self,v_path,f_path) :
+        
+        with open(v_path,'r') as v_file :
+            v_source = v_file.read()
 
+
+        with open(f_path,'r') as f_file :
+            f_source = f_file.read()
+
+
+        v_shader = OpenGL.GL.shaders.compileShader(v_source,GL_VERTEX_SHADER)
+        f_shader = OpenGL.GL.shaders.compileShader(f_source,GL_FRAGMENT_SHADER)
+        self.shader = OpenGL.GL.shaders.compileProgram(v_shader, f_shader)
+
+    def use(self) :
+        glUseProgram(self.shader)
+
+    def setvec3(self,name,a,b,c) :
+        loc = glGetUniformLocation(self.shader,name)
+        glUniform3f(loc,a,b,c)
+~~~
 
 这个很简单明白，不再细说。  
 
@@ -924,7 +981,9 @@ if __name__ == "__main__" :
 
 所以，纹理的处理变得越来越长，大概很快就要在写一个帮助的模块了。
 
+注意这里，为了对同一个shader使用多个纹理，我们使用了`glActiveTexture(GL_TEXTURE0)`
 
+最多大概可以激活16个，我记得。但是，再次声明，这是对于同一个着色器，如果是不同的着色器，就不必这样。
 
 纹理部分暂时到此结束
 
@@ -1373,6 +1432,115 @@ class My_shader:
 漫反射因子和光源的乘积就是漫反射分量，与环境光叠加再乘上物体颜色就是得到的反射颜色
 
 例子暂时不写，等到写完镜面反射一起给出
+
+
+
+
+
+
+
+### Obj模型加载
+
+#### 文件格式
+
+以`#`开始的行是注释行
+
+`v`代表的是几何顶点
+
+`vt`是纹理坐标
+
+`vn`是法线
+
+`f`代表面
+
+基本上最初只需要关注这些就可以
+
+然后我要总结一下代码的特性，我参考其他作者的代码完成的ObjLoader将所有的数据存入到了model属性中，存储的顺序是:顶点，纹理坐标，法线坐标
+
+然后因为在设置pointer的时候需要用到起始点的偏移量，所以有提供了vert_start，tex_start，normal_start这三个属性，然后整个model的字节数使用size属性提供，绘制的时候还需要三角形的数目，所以还提供了triangle_num这个属性，然后，并不是所有的obj文件都提供了法向，使用之前应该检查has_normal属性，代码如下所示：
+
+~~~python
+import numpy as np
+
+class ObjLoader :
+	def __init__(self,path) :
+		self.vertex = []
+		self.tex_coords = []
+		self.normals = []
+
+		self.vertex_index = []
+		self.tex_index = []
+		self.normal_index = []
+
+		self.model = []
+		self.load(path)
+
+	def load(self,path,dtype=np.float32) :
+
+		with open(path,'r') as fi :
+			content = fi.readlines()
+
+		for line in content :
+			if line.startswith('#') :
+				continue
+			values = line.split()
+			if not values :
+				continue
+			if values[0] == 'v' :
+				self.vertex.append(values[1:4])
+			elif values[0] == 'vt' :
+				self.tex_coords.append(values[1:3])
+			elif values[0] == 'vn' :
+				self.normals.append(values[1:4])
+			elif values[0] == 'f' :
+				face = []
+				tex = []
+				normal = []
+
+				for va in values[1:4] :
+					val = va.split('/')
+					self.vertex_index.append(int(val[0])-1)
+					self.tex_index.append(int(val[1])-1)
+					if len(val)==3 :
+						self.normal_index.append(int(val[2])-1)
+						self.has_normal = True
+
+		self.model.extend([valu for i in self.vertex_index for valu in self.vertex[i]])
+		self.model.extend([valu for i in self.tex_index for valu in self.tex_coords[i]])
+		if self.has_normal :
+			self.model.extend([valu for i in self.normal_index for valu in self.normals[i]])
+
+		self.model = np.array(self.model,dtype=dtype)
+
+		self.vert_start = 0
+		self.tex_start = len(self.vertex_index)*3*4
+		self.normal_start = (len(self.vertex_index)*3+len(self.tex_index)*2)*4
+		self.size = self.model.itemsize*len(self.model)
+		self.triangle_num = len(self.vertex_index)
+if __name__ == '__main__' :
+	test = ObjLoader('cube.obj')
+	print(test.model)
+	print(test.vert_start)
+	print(test.tex_start)
+	print(test.normal_start)
+	print(test.size)
+~~~
+
+使用的时候，只需要把model存入VBO即可，然后使用pointer指示位置即可。
+
+这里说明两个问题：第一，数据的存储，第二，stride参数
+
+这里在model中，所有的顶点数据存在最前面，然后是纹理坐标，最后是法向
+
+但是你应该注意到pointer里面的参数只给出了，是几元组，相邻数据的偏移，开始的偏移。并没有关于有几组数据这样的参数，那么我们使用这样的数据格式会出问题吗？大可放心，没事
+
+第二个问题，当我们使用交错存储的时候，我们需要制定相邻数据的偏移，但是像这种存储格式，我们还要指定吗？逻辑上的思考是需要的，但是事实是这种紧密存储可以指定，也可以设为0
+
+
+
+我们下一步的工作是，应该完成一个纹理导入类了。
+
+
 
 
 
