@@ -1,14 +1,10 @@
 import threading
 import queue
 
+__all__ = ["Work","ThreadPool"]
 
 class WorkDone(Exception) :
 	pass
-
-
-
-
-
 
 
 class WorkThread(threading.Thread) :
@@ -16,20 +12,21 @@ class WorkThread(threading.Thread) :
 	def __init__(self,work_queue,result_queue,timeout) :
 		threading.Thread.__init__(self)
 
-		self.setDaemon(True)
+		#self.setDaemon(True) 已经被废弃了
+		self.daemon = True
 		self.work_queue = work_queue
 		self.result_queue = result_queue
 
 		self.timeout = timeout
 
-		self.dissmiss = threading.Event()
+		self.dismiss = threading.Event()
 
 		self.start()
 
 	def run(self) :
 
 		while True:
-			if self.dissmiss.is_set() :
+			if self.dismiss.is_set() :
 				break
 
 			try :
@@ -38,19 +35,19 @@ class WorkThread(threading.Thread) :
 			except queue.Empty :
 				continue
 			else :
-				if self.dissmiss.is_set() :
+				if self.dismiss.is_set() :
 					self.work_queue.put(work)
 					break
 				try :
-					result = work.work_func(*work.args)   #此处未完成
-					print('%s is done'%work.work_ID)
+					result = work.work_func(*work.args)   
+					#print('%s is done'%work.work_ID)
 					self.result_queue.put((work,result))
 				except :
 					pass
-					#未完成
 
-	def set_dissmiss(self) :
-		self.dissmiss.set()
+
+	def set_dismiss(self) :
+		self.dismiss.set()
 
 
 class Work() :
@@ -78,7 +75,7 @@ class Work() :
 
 
 class ThreadPool(object):
-	"""docstring for Pool"""
+
 	def __init__(self,worker_num,work_size=0,result_size=0,timeout=5) :
 
 		self.work_queue = queue.Queue(work_size)
@@ -86,7 +83,7 @@ class ThreadPool(object):
 		self.timeout = timeout
 
 		self.workers = []
-		self.dissmiss_workers = []
+		self.dismiss_workers = []
 		self.work = {}
 
 		self.creat_workers(worker_num)
@@ -98,32 +95,32 @@ class ThreadPool(object):
 		
 		
 	def dismiss_thread(self,num,do_join=False) :
-		dissmiss_list = []
+		dismiss_list = []
 		num = min(num,len(self.workers))
 		for i in range(num) :
 			worker = self.workers.pop()
-			worker.set_dissmiss()
-			dissmiss_list.append(worker)
+			worker.set_dismiss()
+			dismiss_list.append(worker)
 
 		print('stop %s work thread and leave %s thread.....'%(num,len(self.workers)))
 
 		if do_join :
-			for i in dissmiss_list :
+			for i in dismiss_list :
 				i.join()
 			print('join all dismiss thread already...')
 
 		else :
-			self.dissmiss_workers.extend(dissmiss_list)
+			self.dismiss_workers.extend(dismiss_list)
 
 	def join_dismiss_thread(self) :
 
-		for i in self.dissmiss_workers :
+		for i in self.dismiss_workers :
 			i.join()
 		
 
-		print('join %s dismiss workers already,now there are still %s workers...'%(len(self.dissmiss_workers),len(self.workers)))
+		print('join %s dismiss workers already,now there are still %s workers...'%(len(self.dismiss_workers),len(self.workers)))
 
-		self.dissmiss_workers = []
+		self.dismiss_workers = []
 
 
 	def put_work(self,work,block=True,timeout=None) :
@@ -135,7 +132,7 @@ class ThreadPool(object):
 		else :
 			print('work must be Work class,put failure.....')
 
-		print('add one work')
+		#print('add one work')
 
 	def get_all_result(self,block=False) :
 		while True:
@@ -143,7 +140,7 @@ class ThreadPool(object):
 				raise WorkDone
 			try :
 				work, result = self.result_queue.get(block=block) 
-				print('got one result')
+				#print('got one result')
 				del self.work[work.work_ID]
 			except :
 				break

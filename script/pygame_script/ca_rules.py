@@ -3,7 +3,7 @@ from numpy.random import randint
 import pygame
 import sys
 from pygame.locals import *
-
+#这是元胞自动机
 def rule1(cut) :
 
     if cut[1,1] :
@@ -49,18 +49,26 @@ screen.fill([255,255,255])
 
 world = randint(2,size=(100,100))
 
-
+flage = False
+downx,downy = 0,0
 
 while True :
     for e in pygame.event.get() :
         if e.type == QUIT :
             pygame.quit()
             sys.exit()
+        elif e.type == MOUSEBUTTONDOWN :
+            flage = True
+            downx,downy = e.pos
+            #world[int(downx/7),int(downy/7)] = 1
 
 
     screen.fill([255,255,255])
 
     world = evaluate(world,rule1)
+    if flage :
+        world[int(downx/7),int(downy/7)] = 1
+        flage = False
     draw(screen,world)
 
     pygame.display.update()
