@@ -18,6 +18,14 @@
 
 
 
+修改起始目录：
+
+在cmd中输入`jupyter notebook -generate-config`，将会生成一个名为`jupyter_notebook_config.py`的文件，找到`#c.NotebookApp.notebook_dir =`这一行，在等号后面填入想要的目录的完整路径，删掉前面的`#`，保存即可。
+
+生成的文件应该在`C:\Users\Name\.jupyter`文件夹下吧，也许是在你的cmd当前目录下，修改后挪到前述文件夹即可。
+
+
+
 ### 有很多模块包的网站
 
 [下载python模块的网站](http://www.lfd.uci.edu/~gohlke/pythonlibs/#pygame)
@@ -703,3 +711,40 @@ yellow = 0xfe
 但是，如果获得的字符串是用户输入的该怎么办？强制要求用户将每个`\`变成`\\`不太人性化，但是我们有没有办法在获取之后再转换，是不是很尴尬。
 
 但是，如果你试验一下，你会发现input竟然很人性化的，自动将输入的`\`变成`\\`，牛叉。虽然当你的确想要转义的时候这显得有点恶心，但是大多数情况下并不是。
+
+
+
+### 邮件发送
+
+很多情况下，使用程序自动发送邮件还是很有用的，在python里面使用的工具主要是smtplib和email两个模块。
+
+首先要解决的第一个问题是客户端的问题，我们需要一个邮件发送的服务器，真正靠谱的方式还是要使用第三方的服务器，例如我们注册了qq邮箱，就可以通过一些设置和授权，允许我们的程序使用qq邮箱服务器发送邮件。
+
+对于qq而言，邮件发送服务器的地址是`smtp.qq.com`，想要登陆需要授权码，首先打开网页版qq邮箱，然后找到s设置-账户-POP3/IMAP/SMTP/Exchange/CardDAV/CalDAV服务，开启POP3/SMTP服务，这个过程需要你的邮箱有绑定手机或其他的安全设置，还会要求你发送短信到指定号码，然后就会生成一个授权码，授权码可以一直使用，也可以多次生成。
+
+下面给出一个简单的例子：
+
+~~~python
+def send_email(ip) :
+	user = "xxxxxxx"
+	code = "xxxxxxx"
+
+	reciver = "xxxxxxxx"
+
+	msg = MIMEText("My IP is "+ip)
+	msg["Subject"] = "this is my ip"
+	msg["From"] = user
+	msg["To"] = reciver
+
+	try :
+		smtp = smtplib.SMTP_SSL("smtp.qq.com")
+		smtp.login(user, code)
+		smtp.sendmail(user, reciver, msg.as_string())
+		smtp.quit()
+	except Exception :
+		print("send fail...")	
+~~~
+
+这里的user就是qq邮箱账号，code是授权码，reciver是收信人，注意code对于现在的qq邮箱来说应该是16位的，生成的时候你可能会以为有空格，但是应该去掉空格。
+
+当然还有更高级的功能可以使用。
