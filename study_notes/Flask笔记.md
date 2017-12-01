@@ -202,3 +202,167 @@ url_for()，啥？
 
 
 
+
+
+## 新旅途
+
+我重新启动flask，这一次大有不同，我购买了树莓派，我准备搭建一个包含了合格的生产服务器的完整的网页。
+
+据网上的说法，nginx是一个不错的服务器选择，相比apache，nginx虽然有一些劣势，但是它完美的解决了c10k的问题，虽然现在这个对我而言毫无意义，但是很牛呀，他足够轻量级，只有几兆而已。可谓完美，对于树莓派而言。
+
+在服务器和框架之间，我们需要一个过渡件，一个wsgi接口，我看到呼声最高的是`uwsgi`和`gunicorn`，这两者都只在`linux`上面可用，两者都是python的模块，据我的切身体验和初步尝试，以及风评来看，大家似乎说对于`Django`而言，前者似乎还挺好的，但是对于`flask`而言，后者的体验更好。
+
+
+
+然后，基本确定了`nginx-gunicorn-flask`的架构。
+
+至于数据库什么的再说吧。
+
+
+
+一直以来我都有点排斥python的虚拟环境，但是继上一次系统被我搞坏之后，我觉得虚拟环境还是挺好的。
+
+
+
+### 过程与环境构建
+
+首先cd到一个你想要在这里折腾的文件夹，例如`/home/pi/flask_test`，然后在这里执行`python3 -m venv server_test`，这条命令将在当前文件夹里面构建一个虚拟环境，所有的东西地方在`server_test`文件夹内，例如`bin include lib share`等文件夹
+
+构建虚拟环境的工具似乎很多，但是我选择这个，似乎他并不需要什么额外的模块支持吧，应该，如果需要的话可能是`virtualenv`？执行以下`pip3 install virtualenv`即可
+
+接下来需要启动虚拟环境，首先要保证自己在`/home/pi/flask_test/server_test`文件夹下，然后执行`source ./bin/activate`
+
+再次声明，这些所有都是在linux上面执行的，windows下面并不可行
+
+
+
+如果成功的启动了虚拟环境你会看到命令行提示符最前面是`(server_test)`这样的
+
+
+
+在虚拟环境下你就可以执行正常的python命令了
+
+安装flask，`pip3 install flask`，安装gunicorn，`pip3 install gunicorn`
+
+
+
+接下来可以做一些测试：
+
+`vim first.py`，然后编写一个基本的flask应用：
+
+例如：
+
+~~~python
+from flask import Falsk
+
+app = Flask(__name__)
+
+@app.route("/")
+def hello() :
+    return "hello"
+
+if __name__ == "__main__" :
+    app.run(host="0.0.0.0",port=8000)
+~~~
+
+这个文件将会保存在当前文件夹下，也即`/home/pi/flask_test/server_test`
+
+然后可以运行一下`python3 first.py`
+
+注意在linux上面，必须要写host为这个值，否则的话其他机器无法访问
+
+通过gunicorn运行，不使用上述命令运行，取而代之是`gunicorn --bind 0.0.0.0:8000 first:app`
+
+观察一下就知道，前一个是py文件的名字，后一个是里面的`app`的名字
+
+使用`ctrl-c`就可以结束
+
+
+
+退出虚拟环境`deactivate`
+
+
+
+
+
+下面要安装Nginx
+
+执行`sudo apt-get install nginx`
+
+它将生成`/etc/nginx`，存于里面
+
+
+
+### 运行过程
+
+终止环境构建的部分，我要讲一下到目前为止的，我对运行过程的理解，这很有必要。但是要声明，这里面很多只是推测，并不是确切的从书上看到的，但是我对这些推测持有相当高的信心。
+
+
+
+据以前的知识，我知道flask自带一个测试服务器，当使用python命令直接运行的时候，flask就是运行在这个服务器上面，但是，也很明确的知道这些常见的服务器框架都是运行在相同的协议上面，就是wsgi，这个协议表明了服务器应该以什么样的格式把数据交给网络框架，我们可以使用任何服务器，只要他能够完成以wsgi协议，将数据传递给flask的一个app即可。
+
+对于nginx，它可以处理各种那个繁琐的事务，包括如何接收断开和客户端的链接，接收发送报文等一系列的工作，最最重要的一点是nginx通过它的配置文件可以配置一个`proxy_pass`参数，这个参数表明了它可以把自己接收到的报文转发给某个对象，一般是一个套接字，具有现实意义的是这个套接字是`127.0.0.1:port`，那么他就可以转发给本机的指定端口。
+
+这时gunicorn上场了，它可以监听指定的套接字，当host指定为`0.0.0.0`的时候它可以接受以ip地址访问的请求，但是如果套接字被指定为了`127.0.0.1:8000`这样的时候，它将只监听本机8000端口的请求，注意到奇妙的链接了吗？我们只需要让nginx把请求发送到gunicorn监听的端口就好了。
+
+最后一个步骤，gunicorn将会把报文解析，转换为wsgi格式交给他所绑定的app。于是一系列的周转完成了。
+
+
+
+所以，明显，我们要配置nginx，然后让它运行起来，然后再使用gunicorn运行flask，两者之间自然会转发完成交互。总之，需要同时运行两个程序。
+
+大概就是这样，但是我的确有一些疑问，例如nginx的确可以通过异步等完成高级的c10k等问题，但是它通过转发和gunicorn的交互依旧是串行的，单线交互，所以后者难道不会导致优势消耗殆尽吗？这样的话nginx的存在就完全没必要了，甚至是累赘了。
+
+这些我还不懂，甚至也不需要懂。
+
+
+
+### 环境续
+
+前面讲到安装结束nginx，此时我们需要对它进行配置，他的默认启动配置文件是'/etc/nginx/sites-available/default'，两种做法，简单的，直接在这个文件上下手，复杂的在合适的文件夹下创建一个新的配置文件，然后通过链接处理，让nginx从自己写的配置启动。后者不说了，[看这里](https://www.digitalocean.com/community/tutorials/how-to-serve-flask-applications-with-gunicorn-and-nginx-on-ubuntu-14-04)
+
+
+
+对于前者，我们也使用要备份一下原始配置文件，说不定哪天就用上了，执行命令`sudo cp /etc/nginx/sites-available/default /etc/nginx/sites-available/default.bak`
+
+备份就是带有`.bak`后缀的那个，我们修改前者：`sudo vim /etc/nginx/sites-available/default`
+
+前面那个链接给出的配置文件是：
+
+~~~
+server {
+    listen 80;
+    server_name server_domain_or_IP;
+
+    location / {
+        include proxy_params;
+        proxy_pass http://unix:/home/user/myproject/myproject.sock;
+    }
+}
+~~~
+
+稍微解释一下，listen指定的是监听哪个端口，`server_name`是域名或者ip地址.
+
+我没改这么多，直接保留了原文件里面的listen和`server_name`
+
+然后删掉这两项和location之间的所有内容，location里面的内容可以直接写成上面写的那样，只是把`proxy_pass`修改成`http://127.0.0.1:8000`，意思是啥很明显的吧。
+
+保存即可。
+
+
+
+然后应该运行起来nginx，命令为`sudo /etc/init.d/nginx start`
+
+停止的话直接`sudo nginx -s stop`即可
+
+
+
+然后只需要回到虚拟环境，重新执行`gunicorn --bind 127.0.0.1:8000 first_app:app`即可
+
+
+
+基本的使用到此就结束了，当然后面就该测试所有的细节内容了，包括静态文件，模板，等等。很有可能还是需要修改nginx的配置，但是最重要的入门一步到此就结束了。
+
+
+
+哎呀，已经三个小时了，差不多。入门是入了，可是原计划的学习却完全被耽误了，感觉今天的学术计划要泡汤。。。

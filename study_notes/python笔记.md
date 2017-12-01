@@ -20,7 +20,7 @@
 
 修改起始目录：
 
-在cmd中输入`jupyter notebook -generate-config`，将会生成一个名为`jupyter_notebook_config.py`的文件，找到`#c.NotebookApp.notebook_dir =`这一行，在等号后面填入想要的目录的完整路径，删掉前面的`#`，保存即可。
+在cmd中输入`jupyter notebook --generate-config`，将会生成一个名为`jupyter_notebook_config.py`的文件，找到`#c.NotebookApp.notebook_dir =`这一行，在等号后面填入想要的目录的完整路径，删掉前面的`#`，保存即可。
 
 生成的文件应该在`C:\Users\Name\.jupyter`文件夹下吧，也许是在你的cmd当前目录下，修改后挪到前述文件夹即可。
 
