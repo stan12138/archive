@@ -372,3 +372,59 @@ server {
 
 
 如果对静态文件的修改无法及时在浏览器中显示，那是因为浏览器的缓存问题，可以使用`ctr-F5`刷新缓存
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+### 关于flask使用的一些技术
+
+为了使用editor.md，我需要用flask模拟很多响应过程，这里面用到的技巧有：
+
+1.  如何在url的响应中指定MIME类型，同时，我们的返回内容可以是字符串，也可以是二进制的：
+
+~~~python
+from flask import Flask,render_template,request,Response
+
+app = Flask(__name__)
+
+@app.route('/fonts/editormd-logo.woff',methods=['GET','POST'])
+def t1() :
+	with open('static/editormd-logo.woff','rb') as fi :
+		rep = fi.read()
+	return Response(rep,mimetype='application/font-woff')
+
+
+@app.route('/fonts/fontawesome-webfont.woff2',methods=['GET','POST'])
+def t2() :
+	with open('static/fontawesome-webfont.woff','rb') as fi :
+		rep = fi.read()
+	return Response(rep,mimetype='application/font-woff2')
+
+@app.route('/fonts/editormd-logo.ttf',methods=['GET','POST'])
+def t3() :
+	with open('static/editormd-logo.ttf','rb') as fi :
+		rep = fi.read()
+	return Response(rep,mimetype='application/x-font-ttf')
+~~~
+
+在这里看到的几个响应明显是静态的字体或者相应的文件，为什么我会手动处理？原因是这几个请求的发出不受我的控制，它们是由众多js中的某一个动态构建的，我无法控制，因而只能接受，只能响应。并且要注意，类型与文件必须对应。
+
+2.  第二个问题是，`http://127.0.0.1:8000/fonts/fontawesome-webfont.woff2?v=4.3.0`这种形式的url是个什么情况
+
+其实前面那段代码中的大多数请求都是这种样子的，`?`后面的内容应该是参数，如何指定这种url的视图函数呢？方法就是像上面的代码一样，直接抛弃掉`?`及后面的部分，flask会帮我们进行这样的映射。
+
+
+
+3.  你知道的，校园网是一个局域网，这就意味着外界无法访问，但是神奇的在于，我们是支持了ipv6的，也就是说，如果校园网外的某个人如果接入了ipv6，那么他就可以访问我了，ipv6没有局域网。我只需要开启一个ipv6的服务器就可以，而让flask接收ipv6的连接方法很简单，只需要指定`host='::'`，而浏览器以ip地址+端口号的形式就可访问，与ipv4一致，但是因为ipv6的地址里面有`:`，所以写法与ipv4不同，ipv4为`127.0.0.1:8000`，而ipv6为`http://[2001:da8:215:501:1010:f98e:a051:b4de]:8000/`，方括号内为主机ipv6地址
+
