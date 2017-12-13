@@ -428,3 +428,149 @@ def t3() :
 
 3.  你知道的，校园网是一个局域网，这就意味着外界无法访问，但是神奇的在于，我们是支持了ipv6的，也就是说，如果校园网外的某个人如果接入了ipv6，那么他就可以访问我了，ipv6没有局域网。我只需要开启一个ipv6的服务器就可以，而让flask接收ipv6的连接方法很简单，只需要指定`host='::'`，而浏览器以ip地址+端口号的形式就可访问，与ipv4一致，但是因为ipv6的地址里面有`:`，所以写法与ipv4不同，ipv4为`127.0.0.1:8000`，而ipv6为`http://[2001:da8:215:501:1010:f98e:a051:b4de]:8000/`，方括号内为主机ipv6地址
 
+
+
+
+### 登陆、Cookie与session
+
+我现在需要登录了，或者说用户状态追踪。
+
+flask里面的这一块一如其他部分，十分之友好方便，简单到令人发指。并且实现表现的形式正如我所想要的。
+
+首先要明白的是，一般情况下，当我们需要追踪用户状态的时候，我们的解决方法其实就是cookie，那么这种情况下的使用逻辑是，当用户请求的时候，在响应里面设置一个cookie, 等用户登录成功之后，我们设置cookie里面的某个字段，以后需要检查的时候，就根据这个字段来判断用户是否登陆成功了。
+
+逻辑很清晰，flask里面也的确有这种设置cookie的方法，但是稍微想一下就知道，这种方式很容易被用户猜出服务器是根据什么判断登陆的，然后篡改即可，如何解决？其实并没有什么高端的方法，无非就是加密而已，我加密cookie，用户拿到了也不知道内容，但是服务器这边通过简单的解析即可得到cookie内容，在flask里面实现了这个的功能叫做session就是会话。
+
+这里，直接给出一个例子：
+
+~~~python
+from flask import Flask,render_template,request,Response, session, make_response, escape
+
+app = Flask(__name__)
+
+@app.route('/',methods=['GET','POST'])
+def home() :
+	if 'state' in session and escape(session['state'])=='login' :
+		res = make_response(render_template('homepage.html',user="stan"))
+	else :
+		res = make_response(render_template('homepage.html',user="stranger"))
+	return res
+
+@app.route('/login',methods=['GET','POST'])
+def blog() :
+	if request.method == "POST" :
+		if request.form['user'] == "stan" :
+			session['state'] = "login"
+	return render_template('login.html',user="stranger")
+
+@app.route('/logout',methods=['GET','POST'])
+def log() :
+	if 'state' in session and escape(session['state'])=='login' :
+		session['state'] = "logout"
+	return render_template('login.html',user="stranger")
+
+
+@app.route("/favicon.ico")
+def icon() :
+	with open("static/images/stan.ico",'rb') as fi :
+		rep = fi.read()
+	return Response(rep,mimetype='image/x-icon')
+
+app.secret_key = '12345'
+
+if __name__ == '__main__' :
+
+	app.run(host="0.0.0.0",debug=True,port=8000)
+~~~
+
+从代码里面看，我们使用session的对外的接口就类似于一个字典，我们可以通过键值访问，适当的时候我们设置，适当的时候修改，适当的时候检查就可，需要注意的是首先使用之前必须设置密码，应该很复杂才对。
+
+然后你可能很奇怪的是，代码里面根本没有展示我们什么时候把session加入了响应中，难道session就只是一个服务器上面的字典吗？从未发出，那简直太傻了吧，根本不可能实现追踪不同的用户，一人登陆大家登陆。其实完全不必担心，session的确被加入了响应中，只是是由flask默默完成了，完全不必担心，检查一下浏览器，你就会发现真的有cookie，但是是一个被加密过的乱码，根本认不出来。
+
+总而言之，session的确是通过cookie实现的，并且感觉上比cookie更加易用，更加安全，完全可以实现用户追踪。
+
+
+
+### 数据库与分页
+
+我并不想做一个多么正式的东西，只要对我而言够用即可，只要功能能实现就好，鉴于树莓派至今因为系统是32位的，无法安装mongodb的原因，现在我的选择是，使用sqlite3作为数据库。
+
+数据库只是为了存储文章和用户，所以需求十分简单。
+
+我需要一个表来存储文章总数n，其实和文章记录存到一起也未尝不可，虽然有点浪费空间，但毕竟还是那句话需求很简单，又不对外开放。
+
+然后对于每一篇文章记录的结构是`ID 即序号 title auth date content path`，序号记录这是第几篇文章，从1开始，越新序号越靠后，文章是md文件，并不存与数据库中，而是存在一个其他文件夹中，路径由path给出，content其实还没考虑好，原本打算直接是预览部分的html代码，这样动态页面生成的时候就方便了，或者只是预览部分的内容摘要，然后结合title，作者，时间等来动态生成。
+
+假设文章总数为n，当前请求的页面页码为p，每页最多m篇文章，那么总页数mp是int((n+m-1)/m)，如果当前页是`[1,mp)`，那么需要的文章预览条目是id为`[n-10p+1，n-10(p-1)]`，如果是最后一页，那么条目是`[1,n-m(p-1)]`
+
+这样的话，基本上问题就解决了
+
+剩余的是数据库操作的问题。
+
+sqlite3是关系型数据库，它的数据库已经被简化为了一个`.db`文件，数据库内有表，表的每一行是一个记录，每一列是一个键，我需要知道的最基本操作无非增删改查。
+
+~~~python
+import sqlite3
+
+client = sqlite3.connect('test.db')
+
+cursor = client.cursor()
+
+cursor.execute()
+client.execute()
+
+result = client.execute()
+
+res = [i for i in result]
+
+
+f = open('test.sql')
+fi = f.read()
+f.close()
+client.executescript(fi)
+~~~
+
+这是一个最简单的实例，光标和连接都可以通过execute执行sql代码，第一句中，如果没有test.db这个数据库，就会生成。
+
+假设我们是做了查询，返回值result是一个数据库中的表，用type检查的话是一个光标对象，但是我们可以迭代，于是我一般选择先用迭代器将其转换为一个列表，列表的每一个元素都是一个元组，每一个元组就是一条记录，这样我们就可以很方便地使用了。
+
+最后那个是执行脚本的方法，想要执行脚本我们需要自己读取，然后将读到的内容交给这个方法。
+
+脚本就是.sql脚本，例如这样的
+
+~~~sql
+drop table blog;
+create table blog(
+	id int primary key,
+	title text,
+	auth text,
+	c_date text,
+	content text
+);
+
+insert into blog values(1, "test1", "stan", "17.12.13", "<article>haha</article>");
+insert into blog values(2, "test1", "stan", "17.12.14", "<article>haha</article>");
+insert into blog values(3, "test1", "stan", "17.12.15", "<article>haha</article>");
+insert into blog values(4, "test1", "stan", "17.12.16", "<article>haha</article>");
+insert into blog values(5, "test1", "stan", "17.12.17", "<article>haha</article>");
+insert into blog values(6, "test1", "stan", "17.12.18", "<article>haha</article>");	
+insert into blog values(7, "test1", "stan", "17.12.19", "<article>haha</article>");
+
+delete from blog where id=4 ;
+
+update blog set id=id-1 where id>4 ;
+~~~
+
+
+
+下面的其实是sqlite3的使用方法，这里要说的话估计要写很多，但其实没啥必要，去网上看一看教程就够了，例如[这个](http://www.runoob.com/sqlite/sqlite-create-database.html)
+
+不用看那么细，知道怎么创建表，怎么插入数据，insert update select delete即可
+
+对于我们的要求而言，其实要掌握的很少，只需最基本的操作。
+
+最重要的问题是怎么删除一个记录，其实上面我最后的两个语句就完成这个任务了，我感觉这样就地修改正在遍历的键并不好，但是这的确很方便，也的确有效。
+
+就这样，我们的最重要的原理就搞定了。就差写出来了。
+
+还有就是模板，秉承够用就好的理念，我决定也不深入学习jinja2了，够用就行。
