@@ -1034,3 +1034,62 @@ chrome默认值是左下角是锚点
 
 ### WebGL
 
+
+
+### Ajax
+
+为了实现不刷新页面就实现登陆，我使用Ajax
+
+这里的代码并不复杂：
+
+~~~javascript
+var btn = document.getElementById("submit");
+btn.onclick = ajax_handle_submit;
+
+var httprequest;
+
+function ajax_handle_submit(e) {
+    var form = document.getElementById("login-form");
+    
+    var form_data = new FormData(form);
+
+    httprequest = new XMLHttpRequest();
+    httprequest.onreadystatechange = ajax_handle_response;
+    httprequest.open("POST", '/login');
+    httprequest.send(form_data);
+}
+
+function ajax_handle_response() {
+    if(httprequest.readyState == 4 && httprequest.status == 200) {
+        alert(httprequest.responseText);
+    }
+}
+~~~
+
+但是，我们想实现的效果是，拿到收到的数据，但是又不刷新页面，这里，必须注意的一个点是：input与button的确是有区别的，
+
+~~~html
+<input type='submit'>
+<input type='button'>
+<button></button>
+~~~
+
+在表单里面放第一个，点击就提交，放第二个，会显示一个按钮，但是点击不会有任何动作，放第三个，无论你写不写type都会执行默认的提交动作。
+
+所以，我们必须写第二个，或者在上述ajax代码里面阻止按键的默认动作。
+
+
+
+### 修改DOM的快捷方法
+
+我指的修改肯定是先删后添，原本按照DOM树状结构的方法，我们要逐个删除子节点，增添子节点，也必须先创建一个特定类型的节点，然后append
+
+着实很麻烦，并且也不太适合我们的这种根据返回值修改页面的方法，所以，我们要使用来自html的DOM扩展方法，一个节点的innerHTML属性是一个字符串，这个字符串就是本节点的所有子节点，我们也可以直接写这个属性，就可以实现我们的要求。
+
+~~~javascript
+var part = document.getElementById('login-part');
+var ht = "<h4>Login State</h4> <div>hello , stan</div>";
+part.innerHTML = ht;
+~~~
+
+这就可以实现了。
