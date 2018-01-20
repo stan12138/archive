@@ -193,3 +193,368 @@ void Window::paintEvent(QPaintEvent *)
 
 
 这些就是今天的工作，明天继续。
+
+
+
+### 计划
+
+接下来要做的是：布局管理，最大最小化，缩放，2D绘图，目录接口
+
+我很怕布局管理，我一直搞不好这个东西，因为我根本不知道自己想要什么，写前端的时候就是这样，但愿这一次会有所好转。
+
+
+
+### 布局管理与缩放
+
+当允许窗口执行缩放操作的时候就必须考虑布局管理功能了。
+
+我把边框去掉了，去掉之后很棒的一个特性是只要我不自行提供实现，用户将无法缩放窗口。
+
+
+
+布局问题确实恶心，我一直在这个上面遇到问题，简直不知道该怎么下手。我一直有一种感觉，就是既定的布局方式并不是完备的，也就是说，你并不能使用它们构造出所有你想要的布局，这就是我的感觉。或者说硬要用他们来实现十分之繁复。
+
+那么该怎么办？有两种解决方法，首先，实际上很多情况下，我需要做布局处理的部件很简单，也很少，三四个而已，这时，其实我完全可以自行处理，一般窗口的缩放都是我在mouseMoveEvent里面实现的，所以，我可以在这里加入一些代码，当窗口改变的时候，重新计算部件的坐标，说起来有些复杂，其实实现很简单，基本上都是几个简单的数学公式就搞定。
+
+第二种方法就比较高级了，那就是自定义布局管理器，继承QLayout布局类，然后只要实现必须实现的接口，内部布局的方式我们可以随心所欲，然后就可以像使用内置布局类一样使用自定义的布局了，这种方式相对而言，较为繁琐，但是接口更友好，更加整洁。
+
+下面我会简单聊一下内置布局类，然后重点记录自定义布局类。
+
+内置布局类主要包含三种，BoxLayout, GridLayout, FormLayout
+
+其中的盒式布局又可以分为水平和垂直，指的就是将部件水平排列，或者垂直堆叠
+
+网格布局就没什么可说了，最后一个Form布局实际上是针对那些有标签和文字框的成组的部件的
+
+一般情况下，上述布局形成的每个单元格都是大小相等的，但是通过设置拉伸因子，可以让他们成比例，但是依旧是变化的，也就是说，我没有办法设计一个某些格子是固定的这样的布局。
+
+除此之外，每个部件其实都是有一些sizepolicy属性的，指定了该部件的尺寸策略，固定，最大值，最小值还是随意拉伸。
+
+然后，还提供了一些spacer部件用来占据空间，我也没用过，就不说了。
+
+虽然设计界面是支持拖拉式的布局管理的，但是我并不提倡，他还不如代码式的清晰明了和方便。
+
+那么如何在代码中使用布局？很简单
+
+~~~c++
+#include<QHBoxLayout>
+
+QHBoxLayout *layout = new QHBoxLayout;
+layout->addWidget(ui->pb1);
+layout->addWidget(ui->pb2);
+layout->addWidget(ui->pb3);
+this->setLayout(layout);
+~~~
+
+一般情况下，我们都是在Window的构造方法里面设置布局，然后要记得带着头文件。
+
+上述是单种布局的使用方法，但是实际使用中往往是多种布局混合，首先设定一个主布局，然后主布局再包含子布局，使用主布局的addLayout方法可以增加子布局
+
+关于内置布局的介绍大致如此，不同布局管理的addWidget方法的参数要求各有不同，还有就是一般可以设置单元之间的间隔。
+
+
+
+#### 自定义布局管理器
+
+意义就不说了，很好用，随心所欲就是了。
+
+明显我们是要添加一个头文件和一个类的源文件，添加方式是分别在header和source里面新增文件，分别是头文件和源文件，它会自动加入到pro文件里面。
+
+以一种布局为例，我们想要实现一种SLayout，这种布局的特点是窗口分为两个部分，一上一下，上面是类似于菜单栏，下面是一个大界面，菜单栏距上边缘10，距大界面10，菜单栏的元素是一个个小按钮，尺寸均为20*20，菜单栏距左右边缘都是10，菜单栏本身也可以分为左右，左侧的部件总是靠左，右侧的部件也总是靠右，同一侧部件间距10，大界面距离下左右边缘都是10
+
+那么，我们首先增加两个文件，`stan_layout.h`和`stan_layout.cpp`
+
+文件内容分别为：
+
+~~~c++
+#ifndef STAN_LAYOUT_H
+#define STAN_LAYOUT_H
+
+#include <QtWidgets>
+#include <QList>
+#include <QLayout>
+#include <QRect>
+
+class SLayout : public QLayout
+{
+public :
+    explicit SLayout(QWidget *parent, int spacing = 0);
+    SLayout(int spaceing=0);
+    ~SLayout();
+
+    void addItem(QLayoutItem *item);
+    void addWidget(QWidget* widget, int p);
+
+
+    QLayoutItem *itemAt(int index) const;
+    QLayoutItem *takeAt(int index);
+    QSize sizeHint() const;
+    int count() const;
+    void setGeometry(const QRect &rect);
+private :
+    struct SI
+    {
+        SI(QLayoutItem* i, int p)
+        {
+            item = i;
+            order = p;
+        }
+        QLayoutItem * item;
+        int order;
+    };
+    QList<SI *> list;
+    int numl=0;
+    int numr=0;
+    int numm=0;
+    int flage=1;
+};
+#endif // STAN_LAYOUT_H
+
+
+~~~
+
+~~~c++
+#include "stan_layout.h"
+
+SLayout::SLayout(QWidget *parent, int spacing)
+    : QLayout(parent)
+{
+    flage = spacing;
+}
+
+SLayout::SLayout(int spacing)
+{
+    flage = spacing;
+}
+
+SLayout::~SLayout()
+{
+    QLayoutItem *l;
+    while ((l = takeAt(0)))
+        delete l;
+}
+
+void SLayout::addItem(QLayoutItem* item)
+{
+    list.append(new SI(item, 1));
+    numl = numl+1;
+}
+
+int SLayout::count() const
+{
+    return list.size();
+}
+
+
+void SLayout::addWidget(QWidget* widget, int p)
+{
+    if(p==1)
+    {
+        list.append(new SI(new QWidgetItem(widget), p));
+        numl = numl + 1;
+    }
+    else if(p==2)
+    {
+        list.append(new SI(new QWidgetItem(widget), p));
+        numr = numr + 1;
+    }
+    else if(p==3)
+    {
+        list.append(new SI(new QWidgetItem(widget), p));
+        numm = numm + 1;
+    }
+
+}
+
+QLayoutItem *SLayout::itemAt(int index) const
+{
+    if(index >= 0 && index < list.size())
+    {	SI *wrapper = list.value(index);
+        return wrapper->item;
+    }
+    else
+        return 0;
+}
+
+void SLayout::setGeometry(const QRect &rect)
+{
+    QLayout::setGeometry(rect);
+    int i;
+    int lorder=0;
+    int rorder=0;
+    for(i=0; i<list.size(); ++i)
+    {
+        SI *wrapper = list.at(i);
+        QLayoutItem *item = wrapper->item;
+        int order = wrapper->order;
+
+        if(order==1)
+        {
+            item->setGeometry(QRect(10+lorder*30, 10, 20, 20));
+            lorder = lorder + 1;
+        }
+        else if(order==2)
+        {
+            item->setGeometry(QRect(rect.width()-(numr-rorder)*30, 10, 20 ,20));
+            rorder = rorder + 1;
+        }
+        else if(order==3)
+        {
+            item->setGeometry(QRect(10, 40, rect.width()-20, rect.height()-50));
+        }
+
+    }
+
+}
+
+
+
+QSize SLayout::sizeHint() const
+{
+    QSize a(1,1);
+    return a;
+}
+
+QLayoutItem *SLayout::takeAt(int index)
+{
+    if (index >= 0 && index < list.size()) {
+        SI *wrapper = list.takeAt(index);
+        return wrapper->item;
+    }
+    return 0;
+}
+
+~~~
+
+对于类的定义呢，需要注意的点包括：
+
+-   包含需要的头文件
+-   继承QLayout
+-   一般会实现两个构造方法和一个析构方法，但是其实构造方法没啥用，像上面一样随便写写就好了。析构方法必须要按上面标准实现，它是用来删除部件的。
+-   我们必须要有一个容器，例如QList，用来记录我们添加到布局里面的部件
+-   必须像上面一样重写`addItem,itemAt,takeAt,sizeHint,count,setGeometry`方法，其中的addItem,itemAt,takeAt,sizeHint,count其实没用，只需要随便瞎写，返回一个他需要的类型的返回值就可以，但是呢，事实上addItem是向列表内增加一个部件，itemAt和takeAt都是返回列表指定位置的部件，按这样的标准来实现一下其实也很简单，所以最好还是不要瞎写，就按标准实现一下最好，这里要注意的是itemAt里面的list.value，takeAt里面的list.takeAt，这两个方法一定要这样写，不要用其他方法替代，其实前者还好，关键是后者，我曾经写的是list.at，结果程序就出现crash错误了，可能是因为涉及到删除的问题吧。至于sizeHint这个方法，我暂时根本用不上，只要随便返回一个QSize值给他就好。按照官网上的说法，我们并不需要实现count方法，但是以为count方法来自QLayout，如果不实现，那么这个新类就将成为一个抽象类，进而无法在window.cpp里面用`SLayout *layout = new SLayout;`这样的方式实例化，如果不这样实例化，据测试是会出问题的，乃至无法运行，总之，必须实现count，这个方法返回的是部件的个数。
+-   真正最最有用，几乎是对我们唯一有价值的方法就是setGeometry，当窗口尺寸发生变化的时候，程序会自动调用这个方法，并把整个布局应该位于的矩形传递给这个方法，我们可以在矩形里面任意随心所欲排列我们的部件。
+-   因为大多时候，对于我们想要自定义的布局，并不是所有的部件都是平等的，例如这个例子里面，明显菜单栏左侧部件，右侧部件，主界面是三种不同类型的部件，我们必须把他们统一放进list里面，同时又保留类型信息，常用的解决方法就是自定义一个结构体，例如上面的SI这个结构体，然后，我们在向布局内增加部件的时候明显不会使用addItem方法，因为这个方法必须只能传入一个参数，所以，一般对于自定义的布局，我们虽然都必须实现这个方法，但是我们都会额外自定义一个addWidget方法（名字自己随便起），用于真正的增加部件。
+
+
+
+差不多到这里就可以了，应该已经可以使用了，这些东西都是我参考官网的例子，然后花费大量时间逐个尝试修改删除，找出来的最小可用集合，想看的话，可以到[这里](http://doc.qt.io/qt-5/layout.html#how-to-write-a-custom-layout-manager)看官网的例子，但是这个例子并不特别好，我真正参考的是官网的[这个例子](http://doc.qt.io/qt-5/qtwidgets-layouts-borderlayout-example.html)，这个例子包含了完整的项目的所有文件，并且我逐个拷贝下来，测试了，的确可以顺利运行。
+
+
+
+自定义已经完成，怎么使用呢？和内置布局一样：
+
+~~~
+#include "stan_layout.h"
+
+SLayout *layout = new SLayout;
+layout->addWidget(ui->pb1, 2);
+layout->addWidget(ui->pb2, 2);
+layout->addWidget(ui->pb3, 2);
+this->setLayout(layout);
+
+~~~
+
+包含上述头文件，然后把代码片段放进构造函数就好。
+
+哦，c++没学好的问题，其实上述的布局类实例化方式我并不太理解。
+
+到此，自定义布局算是完美结束了。
+
+
+
+#### 界面缩放
+
+这里要实现的是，如何实现界面的拖拉缩放操作，只需要在mouseMoveEvent方法里面监测鼠标的位置，如果鼠标进入右边缘一定范围内，将光标设置为水平更改尺寸的形状，然后如果恰好检测到鼠标是按下左键的，就根据鼠标的移动使用resize()方法重设窗口尺寸，重设宽度。同样的下边缘基本是一样的操作，重设高度，然后再设置一个右下角，允许同时重设宽高，这里给出部分主要代码片段（不完整，有些布尔量的定义什么的可能没详细给出）：
+
+~~~c++
+if(e->x()>(this->geometry().width()-30) && e->y()>(this->geometry().height()-30))
+    {
+        this->setCursor(Qt::SizeFDiagCursor);
+        this->change_size = true;
+        if(this->press)
+        {
+            QPoint e1(e->pos()-change_old_pos);
+            int w = max(400,this->geometry().width()+e1.x());
+            int h = max(this->geometry().height()+e1.y(),300);
+            resize(w, h);
+            change_old_pos = e->pos();
+        }
+    }
+    else if(e->x()>(this->geometry().width()-20) && e->y()>30)
+    {
+        this->setCursor(Qt::SizeHorCursor);
+        if(this->press)
+        {
+            QPoint e1(e->pos()-change_old_pos);
+            int w = max(400,this->geometry().width()+e1.x());
+            //int h = max(this->geometry().height()+e1.y(),300);
+            resize(w, this->geometry().height());
+            change_old_pos = e->pos();
+        }
+
+    }
+    else if(e->y()>(this->geometry().height()-30))
+    {
+        this->setCursor(Qt::SizeVerCursor);
+        if(this->press)
+        {
+            QPoint e1(e->pos()-change_old_pos);
+            //int w = max(400,this->geometry().width()+e1.x());
+            int h = max(this->geometry().height()+e1.y(),300);
+            resize(this->geometry().width(), h);
+            change_old_pos = e->pos();
+        }
+    }
+    else
+    {
+        this->setCursor(Qt::ArrowCursor);
+        this->change_size = false;
+    }
+
+    set_area(QRect(0,0,this->geometry().width(),30));
+~~~
+
+要注意的事情是，第一，在Qt的默认设置里面，为了提高性能，并不是只要鼠标移动就会触发mouseMoveEvent，而是，必须在按下鼠标键的同时移动才会触发，为了提升用户体验，我需要开启随时追踪的设置，在构造函数加入`this->setMouseTracking(true);`即可。
+
+
+
+下面的计划是将上面很凌乱的重设尺寸的操作写成一个类，规范化一点，然后现在还没有实现最大最小化按键，下一步也准备做。
+
+
+
+#### 最大最小化
+
+前面的尺寸重设，考虑了一下，只是把它归结为一个方法了，没必要重设一个类。
+
+最大最小化，说来很简单，但是也挺弯弯绕的。
+
+首先，事实上，Qt提供了很友好的最大最小化默认方法，`&Window::showMinimized`和`&Window::showMaximized`,按说，只需要`connect(ui->pb1, &QPushButton::clicked, this, &Window::showMinimized);`这样链接就完美了。但是，最小化的确很完美，对于最大化，我们实际上想拦截，因为我们要完成将图标重设为还原，以及再次点击还原的操作，所以，对于最大化，我们必须自行实现。
+
+其实很简单：
+
+~~~c++
+#include <QDesktopWidget>
+
+
+QRect screen;
+
+QDesktopWidget *desktop = QApplication::desktop();
+this->screen = desktop->screenGeometry();
+~~~
+
+先这样，得到屏幕的矩形，然后只需要最大化的时候setGeometry即可。
+
+关于图标的问题，应该这样写`ui->pb2->setIcon(QIcon(":/ico/max1.svg"));`
+
+然后是按钮行为的设置，两种思路，最大化和还原通过将按键的信号重新链接到两个不同函数实现，另一种就是设一个flage记录当前是否最大化，只将按键链接到一个函数上，通过判断flage实现不同行为，要选后者，因为前者会导致窗口几乎崩溃，卡在最大化和还原之间，闪烁。教训是，不要重连同一个按键的信号。
+
+至于还原，人性化一点，是把窗口放在屏幕中间。
+
+然后还要考虑的是，必须在已经最大化的时候，禁用拖动窗口操作，否则用户可能会尝试拖拽实现重设大小，这往往会导致窗口重设错误，乃至卡死，策略是一旦在最大化时拖动窗口就将窗口还原。
+
+差不多就这样了。
+
+窗口的处理大概已经算是结束了。
+
+下一步是尝试功能化操作，例如2D绘图。
