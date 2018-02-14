@@ -124,3 +124,96 @@ Project工程下面的：
 
 
 
+### 重新启程
+
+现在的处境其实很尴尬，Java也已经忘得差不多了，而安卓则从未真正入门过。我在家的时间又不多了，当我回到学校似乎安卓编程又没有什么意义了，因为我并没有安卓设备。
+
+但是，其实呢，前一段时间的Qt学习也是处于类似的困境，我的C++也极其垃圾，但是竟然也成功入了门了，所以我大概很有希望可以入门。
+
+so，从头开始，这一次选择的书是Android编程权威指南第三版
+
+### 界面设计
+
+界面设计是一个xml文件，同时可以看到图形化视图，xml文件中每一个元素都是一个组件，组件的属性定义了它的表现形式，这些都很简单，学过HTML的话，也应该很容易理解。
+
+#### 常见属性
+
+1.  `android:layout_width`与`android:layout_height`，可选值有两个，`match_parent`和`wrap_content`，前者代表与父视图大小一致，后者代表根据内容自动调整，而`android:padding`这个属性可以在内容之外增加额外的空间，dp是与密度无关的像素
+2.  `android:orientation`，决定该组件的子组件水平放置还是垂直放置
+3.  `android:text`，内容，属性值并不是内容，而是字符串资源的引用，虽然可以直接写成明文，但是还是推荐使用引用的形式，主要是为了支持多国语言。所以，需要一个独立的名为string的XML文件作为字符串资源。
+
+#### 字符串资源文件
+
+每个项目都包含默认的字符串资源文件，名字为`string.xml`，该文件位于`app/res/values`目录
+
+至于格式，十分之简单，没有必要说明
+
+一个项目可以包含多个字符串资源文件，自行命名，只要放在`res/values`，然后包含resources根元素，多个string子元素，系统就可以自动发现
+
+### 资源与资源ID
+
+所有的资源都放在`app/res`目录下，获取资源要使用对应的资源ID，而所有的资源ID都定义在R.java里面，这个文件是自动生成的，绝对不要改动。
+
+系统会为布局文件和个字符串等生成资源ID，但是布局文件中的组件默认不会生成ID，例如里面的按钮等。我们可以为想要引用的组件手动指定ID，只需要为组件增加一个`android:id`即可。
+
+要注意的是在增加id和引用字符串时，格式类似而又有区别，`@string/true_button`和`@+id/true_button`，这里的加号代表创建
+
+有了资源ID就可以在主代码中引用它。引用的规则是利用findViewById方法找到组件，然后赋值给对应类型的变量。
+
+~~~java
+public class QuizActivity extends AppCompatActivity {
+
+    private Button mTrueButton;
+    private Button mFalseButton;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_quiz);
+
+        mTrueButton = (Button) findViewById(R.id.true_button);
+        mFalseButton = (Button) findViewById(R.id.false_button);
+        
+    }
+}
+~~~
+
+继续以button为例，我们要设置button的动作，或者说监听到点击时的行为这应该这样：
+
+~~~java
+mTrueButton.setOnClickListener(new View.OnClickListener() {
+	@Override
+    public void onClick(View v)
+    {
+                //
+    }
+
+});
+
+mFalseButton.setOnClickListener(new View.OnClickListener() {
+    @Override
+    public void onClick(View v)
+    {
+                //
+    }
+});
+~~~
+
+#### 提示消息
+
+在安卓中，使用toast来做消息提示
+
+我们可以为点击事件增加一个Toast，当然要包含相应的类
+
+~~~java
+mFalseButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v)
+            {
+                Toast.makeText(QuizActivity.this, R.string.false_toast, Toast.LENGTH_SHORT).show();
+            }
+        });
+~~~
+
+很明显，这里展示了Toast的用法，并额外的使用了字符串资源
+
