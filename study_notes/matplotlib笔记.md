@@ -243,7 +243,7 @@ axes提供了很多处理他们的方法，让你在手工处理之外有了更�
 
 下面是axes的属性集合：
 
-![属性集合](\images\属性集合.PNG)
+![属性集合](images\属性集合.PNG)
 
 
 
@@ -269,7 +269,7 @@ axis.get_ticklines(minor=True)
 
 下面是一个获取方法的集合：
 
-![获取方法](\images\获取方法.PNG)
+![获取方法](images\获取方法.PNG)
 
 我们可以借由这些手段任意设置刻度线和刻度label
 
@@ -301,7 +301,7 @@ matplotlib.axis.Tick是最后一个容器
 
 每一个都可以通过属性直接拿到，或者设置：
 
-![tick](\images\tick.PNG)
+![tick](images/tick.PNG)
 
 这里注意一下最后四个，对于yaxis他的刻度线和label都是分左右的，左边是1，右边是2，我们可以设置最后四个的布尔值，来控制显示情况，对于xaxis来说下是1上是2
 
