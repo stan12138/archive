@@ -1,0 +1,15 @@
+<RCC>
+    <qresource prefix="/style">
+        <file>style.css</file>
+    </qresource>
+    <qresource prefix="/ico">
+        <file>close.ico</file>
+        <file>close1.ico</file>
+        <file>close.svg</file>
+        <file>max.svg</file>
+        <file>min.svg</file>
+        <file>min1.svg</file>
+        <file>re.svg</file>
+        <file>max1.svg</file>
+    </qresource>
+</RCC>
