@@ -210,11 +210,11 @@ matplotlib.axes.Axes是matplotlib宇宙的中心，它可以容纳Artist中绝�
 
 当你使用ax.plot()绘制的时候，会产生一个Line2D对象，自动加入到axes中，并返回给你，我们可以在plot中设置Line2D的所有属性
 
-但实际上他返回的是一个数组，因为你可以在你个plot里面绘制多条线，所以我们会使用解包技术，取到第一个`line, = ax.plot(....)`
+但实际上他返回的是一个数组，因为你可以在一个plot里面绘制多条线，所以我们会使用解包技术，取到第一个`line, = ax.plot(....)`
 
 所有的line存在axes.lines中
 
-类似的是创建patches的各种方法，例如bar()或者hist()等，也会返回对应的patche，并且存入到axes.patches中
+类似的是创建patches的各种方法，例如bar()或者hist()等，也会返回对应的patch，并且存入到axes.patches中
 
 一般情况下，除非我们有很强的目的性，否则不要直接向axes.lines或patches中添加元素，因为在系统自动添加的时候，系统会着很多的工作，例如改变数据结构，调整结构，等等很多很复杂。
 
@@ -320,7 +320,7 @@ ax.yaxis.set_major_formatter(formatter)
 
 图例之后就是高级操作了，之前的是中级操作
 
-一个图例严格而言需要一个handler从而知道自己是谁的图例，然后还需要label作为标记文字，而不是像我们平常所用的那样，直接写legend('first line')这样，handler就是一个原型，Line2D,pathc等诸如此类的，如果恰好这个原型自带了label属性，那么我们甚至不需要在legend中写字符串，它会自动提取label，那么我们必须要求这个handler是图中的元素吗，换句话说，只有图中有元素的时候才能写图例吗？并不是，无论何种手段，我们只要提供一个原型作为handler即可，我们可以自己创建一个，然后不把它添加到图中，例如：
+一个图例严格而言需要一个handler从而知道自己是谁的图例，然后还需要label作为标记文字，而不是像我们平常所用的那样，直接写legend('first line')这样，handler就是一个原型，Line2D,patch等诸如此类的，如果恰好这个原型自带了label属性，那么我们甚至不需要在legend中写字符串，它会自动提取label，那么我们必须要求这个handler是图中的元素吗，换句话说，只有图中有元素的时候才能写图例吗？并不是，无论何种手段，我们只要提供一个原型作为handler即可，我们可以自己创建一个，然后不把它添加到图中，例如：
 
 ~~~python
 line = matplotlib.lines.Line2D([],[],color='blue',marker='*',markersize=15,label='blue star')
