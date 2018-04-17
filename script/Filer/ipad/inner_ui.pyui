@@ -1,0 +1,180 @@
+[
+  {
+    "class" : "View",
+    "attributes" : {
+      "tint_color" : "RGBA(0.000000,0.478000,1.000000,1.000000)",
+      "enabled" : true,
+      "flex" : "",
+      "name" : "",
+      "border_color" : "RGBA(0.000000,0.000000,0.000000,1.000000)",
+      "custom_class" : "MyView",
+      "background_color" : "RGBA(1.000000,1.000000,1.000000,1.000000)"
+    },
+    "frame" : "{{0, 0}, {540, 540}}",
+    "selected" : false,
+    "nodes" : [
+      {
+        "class" : "TableView",
+        "attributes" : {
+          "data_source_font_size" : 18,
+          "data_source_number_of_lines" : 1,
+          "flex" : "WH",
+          "name" : "device_table",
+          "row_height" : 44,
+          "data_source_delete_enabled" : true,
+          "class" : "TableView",
+          "data_source_items" : "",
+          "frame" : "{{170, 170}, {200, 200}}",
+          "background_color" : "RGBA(1.0, 1.0, 1.0, 1.0)",
+          "uuid" : "8D4883C9-B31F-4696-9CFE-8BE621837F0C"
+        },
+        "frame" : "{{91, 102}, {311, 353}}",
+        "selected" : false,
+        "nodes" : [
+
+        ]
+      },
+      {
+        "class" : "TextView",
+        "attributes" : {
+          "class" : "TextView",
+          "alignment" : "left",
+          "autocorrection_type" : "default",
+          "font_size" : 17,
+          "font_name" : "<System>",
+          "frame" : "{{170, 170}, {200, 200}}",
+          "flex" : "WH",
+          "border_color" : "RGBA(0.238208,0.238208,0.238208,1.000000)",
+          "name" : "show",
+          "spellchecking_type" : "default",
+          "editable" : true,
+          "border_width" : 1,
+          "corner_radius" : 10,
+          "uuid" : "E4B613A2-CF1F-414D-A772-A6CB499EBEDE"
+        },
+        "frame" : "{{6, 6}, {522, 120}}",
+        "selected" : false,
+        "nodes" : [
+
+        ]
+      },
+      {
+        "class" : "TextView",
+        "attributes" : {
+          "class" : "TextView",
+          "alignment" : "left",
+          "autocorrection_type" : "default",
+          "font_size" : 17,
+          "font_name" : "<System>",
+          "frame" : "{{170, 170}, {200, 200}}",
+          "flex" : "WH",
+          "border_color" : "RGBA(0.077830,0.077830,0.077830,1.000000)",
+          "name" : "message_box",
+          "spellchecking_type" : "default",
+          "editable" : true,
+          "border_width" : 1,
+          "corner_radius" : 10,
+          "uuid" : "AC6ED24C-D5C8-43EF-88D0-19D8B30E263E"
+        },
+        "frame" : "{{6, 208}, {522, 106}}",
+        "selected" : false,
+        "nodes" : [
+
+        ]
+      },
+      {
+        "class" : "Label",
+        "attributes" : {
+          "font_size" : 18,
+          "text" : "Message",
+          "font_name" : "<System>",
+          "name" : "message_label",
+          "class" : "Label",
+          "alignment" : "left",
+          "frame" : "{{195, 254}, {150, 32}}",
+          "uuid" : "F8D845D6-D8F1-4FB1-B90A-E1528326BA7D"
+        },
+        "frame" : "{{6, 168}, {150, 32}}",
+        "selected" : false,
+        "nodes" : [
+
+        ]
+      },
+      {
+        "class" : "Button",
+        "attributes" : {
+          "font_size" : 15,
+          "title" : "Send Message",
+          "font_bold" : true,
+          "name" : "send",
+          "corner_radius" : 10,
+          "border_width" : 1,
+          "border_color" : "RGBA(0.739130,1.000000,0.739130,1.000000)",
+          "class" : "Button",
+          "frame" : "{{230, 254}, {80, 32}}",
+          "background_color" : "RGBA(0.695652,1.000000,0.695652,1.000000)",
+          "uuid" : "3BDB9C5A-F880-4166-AAB1-A765D658A89A"
+        },
+        "frame" : "{{6, 368}, {522, 66}}",
+        "selected" : false,
+        "nodes" : [
+
+        ]
+      },
+      {
+        "class" : "View",
+        "attributes" : {
+          "class" : "View",
+          "name" : "bar",
+          "uuid" : "D4CC1473-3B04-458B-BE8F-29135AC46FB4",
+          "frame" : "{{220, 220}, {100, 100}}",
+          "custom_class" : "ProcessBar"
+        },
+        "frame" : "{{194, 476}, {321, 100}}",
+        "selected" : false,
+        "nodes" : [
+
+        ]
+      },
+      {
+        "class" : "Button",
+        "attributes" : {
+          "font_size" : 15,
+          "title" : "Send This File",
+          "font_bold" : true,
+          "name" : "file_button",
+          "corner_radius" : 10,
+          "border_width" : 1,
+          "border_color" : "RGBA(0.869565,1.000000,0.869565,1.000000)",
+          "class" : "Button",
+          "frame" : "{{230, 254}, {80, 32}}",
+          "background_color" : "RGBA(0.717391,1.000000,0.811594,1.000000)",
+          "uuid" : "7C3C1A51-7160-403D-B54A-49C0FD43AC40"
+        },
+        "frame" : "{{6, 452}, {163, 100}}",
+        "selected" : false,
+        "nodes" : [
+
+        ]
+      },
+      {
+        "class" : "Label",
+        "attributes" : {
+          "font_size" : 18,
+          "text" : "Please choose device",
+          "font_name" : "<System>",
+          "name" : "device_label",
+          "class" : "Label",
+          "alignment" : "left",
+          "frame" : "{{195, 254}, {150, 32}}",
+          "uuid" : "F6626069-B6E9-420B-864B-220EAC882B9C"
+        },
+        "frame" : "{{160, 51}, {201, 32}}",
+        "selected" : false,
+        "nodes" : [
+
+        ]
+      }
+    ]
+  }
+]

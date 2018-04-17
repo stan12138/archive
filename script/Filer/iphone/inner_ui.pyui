@@ -1,0 +1,173 @@
+[
+  {
+    "selected" : false,
+    "frame" : "{{0, 0}, {320, 480}}",
+    "class" : "View",
+    "nodes" : [
+      {
+        "selected" : false,
+        "frame" : "{{76, 90}, {150, 32}}",
+        "class" : "Label",
+        "nodes" : [
+
+        ],
+        "attributes" : {
+          "font_name" : "<System>",
+          "frame" : "{{85, 224}, {150, 32}}",
+          "uuid" : "DA49CFDD-57EB-43EA-BC3F-CC6681ABACCD",
+          "class" : "Label",
+          "alignment" : "center",
+          "text" : "Device",
+          "name" : "device_label",
+          "font_size" : 18
+        }
+      },
+      {
+        "selected" : false,
+        "frame" : "{{48, 146}, {214, 268}}",
+        "class" : "TableView",
+        "nodes" : [
+
+        ],
+        "attributes" : {
+          "flex" : "WH",
+          "data_source_items" : "",
+          "uuid" : "FD8653D7-AADB-418E-913C-E202498F866A",
+          "frame" : "{{60, 140}, {200, 200}}",
+          "data_source_number_of_lines" : 1,
+          "class" : "TableView",
+          "background_color" : "RGBA(1.0, 1.0, 1.0, 1.0)",
+          "data_source_delete_enabled" : true,
+          "data_source_font_size" : 18,
+          "name" : "device_table",
+          "row_height" : 44
+        }
+      },
+      {
+        "selected" : false,
+        "frame" : "{{6, 6}, {308, 76}}",
+        "class" : "TextView",
+        "nodes" : [
+
+        ],
+        "attributes" : {
+          "uuid" : "2BCD8846-05AE-448D-94B3-17E3AA0099E2",
+          "flex" : "WH",
+          "corner_radius" : 10,
+          "frame" : "{{60, 140}, {200, 200}}",
+          "editable" : true,
+          "border_width" : 1,
+          "alignment" : "left",
+          "autocorrection_type" : "default",
+          "font_name" : "<System>",
+          "spellchecking_type" : "default",
+          "class" : "TextView",
+          "name" : "show",
+          "font_size" : 17
+        }
+      },
+      {
+        "selected" : false,
+        "frame" : "{{6, 130}, {308, 83}}",
+        "class" : "TextView",
+        "nodes" : [
+
+        ],
+        "attributes" : {
+          "uuid" : "0420EFC5-7817-40F1-A803-4DEAFE70319E",
+          "flex" : "WH",
+          "corner_radius" : 10,
+          "frame" : "{{60, 140}, {200, 200}}",
+          "editable" : true,
+          "border_width" : 1,
+          "alignment" : "left",
+          "autocorrection_type" : "default",
+          "font_name" : "<System>",
+          "spellchecking_type" : "default",
+          "class" : "TextView",
+          "name" : "message_box",
+          "font_size" : 17
+        }
+      },
+      {
+        "selected" : false,
+        "frame" : "{{6, 244}, {308, 48}}",
+        "class" : "Button",
+        "nodes" : [
+
+        ],
+        "attributes" : {
+          "border_width" : 0,
+          "frame" : "{{120, 224}, {80, 32}}",
+          "title" : "Send",
+          "uuid" : "E24D3298-A033-47F4-AEAB-A3E9A5878A62",
+          "background_color" : "RGBA(0.500000,1.000000,0.500000,1.000000)",
+          "class" : "Button",
+          "corner_radius" : 10,
+          "name" : "send",
+          "font_size" : 15
+        }
+      },
+      {
+        "selected" : false,
+        "frame" : "{{6, 300}, {94, 149}}",
+        "class" : "Button",
+        "nodes" : [
+
+        ],
+        "attributes" : {
+          "border_width" : 1,
+          "frame" : "{{120, 224}, {80, 32}}",
+          "title" : "Send File",
+          "uuid" : "F32C53E8-24B4-426E-A169-D41FF3CF52D7",
+          "class" : "Button",
+          "corner_radius" : 10,
+          "background_color" : "RGBA(0.444444,1.000000,0.444444,1.000000)",
+          "name" : "file_button",
+          "font_size" : 15
+        }
+      },
+      {
+        "selected" : false,
+        "frame" : "{{108, 349}, {206, 100}}",
+        "class" : "View",
+        "nodes" : [
+
+        ],
+        "attributes" : {
+          "uuid" : "C929D7BF-9FF0-457B-8C11-9B0AF0AFFAC1",
+          "frame" : "{{110, 190}, {100, 100}}",
+          "custom_class" : "ProcessBar",
+          "class" : "View",
+          "name" : "bar"
+        }
+      },
+      {
+        "selected" : false,
+        "frame" : "{{6, 97}, {150, 32}}",
+        "class" : "Label",
+        "nodes" : [
+
+        ],
+        "attributes" : {
+          "font_name" : "<System>",
+          "frame" : "{{85, 224}, {150, 32}}",
+          "uuid" : "33FF73D1-DC5D-4A34-A7C0-E8F1E15F0346",
+          "class" : "Label",
+          "alignment" : "left",
+          "text" : "Message",
+          "name" : "message_label",
+          "font_size" : 18
+        }
+      }
+    ],
+    "attributes" : {
+      "flex" : "",
+      "enabled" : true,
+      "background_color" : "RGBA(1.000000,1.000000,1.000000,1.000000)",
+      "custom_class" : "MyView",
+      "tint_color" : "RGBA(0.000000,0.478000,1.000000,1.000000)",
+      "border_color" : "RGBA(0.000000,0.000000,0.000000,1.000000)"
+    }
+  }
+]

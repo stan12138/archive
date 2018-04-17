@@ -1,0 +1,180 @@
+[
+  {
+    "class" : "View",
+    "attributes" : {
+      "custom_class" : "MyView",
+      "background_color" : "RGBA(1.000000,1.000000,1.000000,1.000000)",
+      "tint_color" : "RGBA(0.000000,0.478000,1.000000,1.000000)",
+      "enabled" : true,
+      "border_color" : "RGBA(0.000000,0.000000,0.000000,1.000000)",
+      "flex" : ""
+    },
+    "frame" : "{{0, 0}, {768, 1024}}",
+    "selected" : false,
+    "nodes" : [
+      {
+        "class" : "TableView",
+        "attributes" : {
+          "background_color" : "RGBA(1.0, 1.0, 1.0, 1.0)",
+          "frame" : "{{284, 412}, {200, 200}}",
+          "border_color" : "RGBA(0.903302,0.903302,0.903302,1.000000)",
+          "data_source_number_of_lines" : 1,
+          "row_height" : 44,
+          "flex" : "WH",
+          "data_source_items" : "",
+          "data_source_delete_enabled" : true,
+          "name" : "device_table",
+          "border_width" : 1,
+          "uuid" : "385AAD56-B05D-4E27-80EA-A8F6E7FA3B43",
+          "data_source_font_size" : 18,
+          "corner_radius" : 10,
+          "class" : "TableView"
+        },
+        "frame" : "{{210, 265}, {361, 602}}",
+        "selected" : false,
+        "nodes" : [
+
+        ]
+      },
+      {
+        "class" : "TextView",
+        "attributes" : {
+          "editable" : false,
+          "alignment" : "center",
+          "autocorrection_type" : "default",
+          "font_size" : 17,
+          "font_name" : "AppleSDGothicNeo-Bold",
+          "frame" : "{{284, 412}, {200, 200}}",
+          "flex" : "WH",
+          "border_color" : "RGBA(0.000000,0.000000,0.000000,1.000000)",
+          "text_color" : "RGBA(0.127358,0.127358,0.127358,1.000000)",
+          "name" : "show",
+          "spellchecking_type" : "default",
+          "corner_radius" : 10,
+          "border_width" : 1,
+          "uuid" : "0928C84D-868E-4954-A528-534E461D9F1B",
+          "class" : "TextView"
+        },
+        "frame" : "{{13, 6}, {749, 200}}",
+        "selected" : false,
+        "nodes" : [
+
+        ]
+      },
+      {
+        "class" : "TextView",
+        "attributes" : {
+          "editable" : true,
+          "alignment" : "center",
+          "autocorrection_type" : "no",
+          "font_size" : 17,
+          "font_name" : "AppleSDGothicNeo-Light",
+          "frame" : "{{284, 412}, {200, 200}}",
+          "flex" : "WH",
+          "border_color" : "RGBA(0.000000,0.000000,0.000000,1.000000)",
+          "text_color" : "RGBA(0.000000,0.000000,0.000000,1.000000)",
+          "name" : "message_box",
+          "spellchecking_type" : "no",
+          "corner_radius" : 10,
+          "border_width" : 1,
+          "uuid" : "A3BA30B7-E12E-4E6D-B660-F181E29100CE",
+          "class" : "TextView"
+        },
+        "frame" : "{{13, 265}, {349, 245}}",
+        "selected" : false,
+        "nodes" : [
+
+        ]
+      },
+      {
+        "class" : "Button",
+        "attributes" : {
+          "font_size" : 15,
+          "uuid" : "9EF2E7B1-D23D-4CAC-BB3C-95E77C3C6AAF",
+          "font_bold" : true,
+          "name" : "send",
+          "corner_radius" : 5,
+          "border_width" : 1,
+          "class" : "Button",
+          "frame" : "{{344, 496}, {80, 32}}",
+          "background_color" : "RGBA(0.840580,1.000000,0.760870,1.000000)",
+          "title" : "Send Message"
+        },
+        "frame" : "{{13, 524}, {349, 72}}",
+        "selected" : false,
+        "nodes" : [
+
+        ]
+      },
+      {
+        "class" : "View",
+        "attributes" : {
+          "class" : "View",
+          "name" : "bar",
+          "uuid" : "C46BEC56-3273-4327-BD07-797C18A45602",
+          "frame" : "{{334, 462}, {100, 100}}",
+          "custom_class" : "ProcessBar"
+        },
+        "frame" : "{{258, 772}, {401, 82}}",
+        "selected" : false,
+        "nodes" : [
+
+        ]
+      },
+      {
+        "class" : "Label",
+        "attributes" : {
+          "font_size" : 18,
+          "text" : "Please choose device",
+          "font_name" : "<System>",
+          "name" : "device_label",
+          "class" : "Label",
+          "alignment" : "center",
+          "frame" : "{{309, 496}, {150, 32}}",
+          "uuid" : "0667206B-09C6-4C4A-B6AD-4D986394DF89"
+        },
+        "frame" : "{{258, 185}, {245, 32}}",
+        "selected" : false,
+        "nodes" : [
+
+        ]
+      },
+      {
+        "class" : "Label",
+        "attributes" : {
+          "font_size" : 18,
+          "text" : "Message",
+          "font_name" : "<System>",
+          "name" : "message_label",
+          "class" : "Label",
+          "alignment" : "left",
+          "frame" : "{{309, 496}, {150, 32}}",
+          "uuid" : "5A9E4F57-CBDE-4A1F-9EB3-623A5EA9BD89"
+        },
+        "frame" : "{{13, 225}, {150, 32}}",
+        "selected" : false,
+        "nodes" : [
+
+        ]
+      },
+      {
+        "class" : "Label",
+        "attributes" : {
+          "font_size" : 18,
+          "text" : "File",
+          "font_name" : "<System>",
+          "name" : "file_label",
+          "class" : "Label",
+          "alignment" : "left",
+          "frame" : "{{309, 496}, {150, 32}}",
+          "uuid" : "6416EC91-8E85-46D9-B367-FD5AF6A977AA"
+        },
+        "frame" : "{{390, 225}, {150, 32}}",
+        "selected" : false,
+        "nodes" : [
+
+        ]
+      }
+    ]
+  }
+]
