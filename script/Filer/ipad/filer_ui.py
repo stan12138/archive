@@ -157,18 +157,23 @@ class FileSource(object):
 
 
 class MyView (ui.View):
+	def __init__(self) :
+		pass
+		#self.have_to_close = False
 	def will_close(self):
-		global have_to_close
-		have_to_close = True
+		#print('ui going to close')
+		self.event.set()
 
-	def get_close(self, func) :
-		self.close_fun = func
+	def set_close(self, event) :
+		self.event = event
 
 class UI :
-	def __init__(self) :
+	def __init__(self,close_event) :
 		if appex.is_running_extension() :
 			self.file_path = appex.get_file_path()
 			self.v = ui.load_view("inner_ui")
+			#self.have_to_close = self.v.have_to_close
+			self.v.set_close(close_event)
 			self.window = self.v['show']
 			self.message_box = self.v['message_box']
 			self.message_label = self.v["message_label"]
@@ -197,7 +202,8 @@ class UI :
 
 		else :
 			self.v = ui.load_view("File_transfer")
-
+			#print(type(close_event))
+			self.v.set_close(close_event)
 			self.window = self.v['show']
 
 			self.message_box = self.v['message_box']

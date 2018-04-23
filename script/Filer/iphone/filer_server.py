@@ -203,24 +203,28 @@ class CommunicateServer :
 		self.recv_try_connect = False
 		
 		try :
+			self.server.shutdown(socket.SHUT_RDWR)
 			self.server.close()
 		except :
 			pass
 		#print('server close')
 		try :
+			self.send_server.shutdown(socket.SHUT_RDWR)
 			self.send_server.close()
 		except Exception as er :
 			pass
 		#print('send server close')
+		
+		#print('recv file close')
+		try :
+			self.recv_server.shutdown(socket.SHUT_RDWR)
+			self.recv_server.close()
+		except :
+			pass
 		try :
 			#print('try to close recv file')
 			self.recv_file.close()
 		except Exception as er :
-			pass
-		#print('recv file close')
-		try :
-			self.recv_server.close()
-		except :
 			pass
 		#print('recv server close')
 		#sys.exit()

@@ -3,6 +3,7 @@ import threading
 import os.path
 import sys
 import time
+import configparser
 
 '''
 这是一个命令行版本的文件传输工具，因为我困于input阻塞的问题，一直无法解决，所以
@@ -15,7 +16,7 @@ class IP_Handler :
 	def __init__(self, server_address) :
 		self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 		self.server_address = server_address
-		self.ID = 'Stan-PC'
+		self.ID = 'Stan-Laptop'
 		self.port = 63834
 		
 		self.device = []
@@ -227,7 +228,9 @@ class CommunicateServer :
 
 
 if __name__ == '__main__':
-	server_address = ('10.112.101.153',6000)
+	cf = configparser.ConfigParser()
+	cf.read('filer.conf')
+	server_address = (cf.get("ip-server","ip"), cf.getint("ip-server", "port"))
 	client_address = []
 	choose_already = False
 

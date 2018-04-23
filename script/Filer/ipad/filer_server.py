@@ -123,7 +123,7 @@ class CommunicateServer :
 				self.show_lock.release()
 
 			self.want_send = False
-		print('server dead')
+		#print('server dead')
 	def client_run(self) :
 		#try_connect = True
 		while self.recv_try_connect:
@@ -203,26 +203,32 @@ class CommunicateServer :
 		self.recv_try_connect = False
 		
 		try :
+			self.server.shutdown(socket.SHUT_RDWR)
 			self.server.close()
 		except :
 			pass
 		#print('server close')
 		try :
+			self.send_server.shutdown(socket.SHUT_RDWR)
 			self.send_server.close()
 		except Exception as er :
 			pass
 		#print('send server close')
+		
 		try :
-			#print('try to close recv file')
-			self.recv_file.close()
-		except Exception as er :
-			pass
-		#print('recv file close')
-		try :
+			self.recv_server.shutdown(socket.SHUT_RDWR)
 			self.recv_server.close()
 		except :
 			pass
 		#print('recv server close')
+		
+		try :
+			#print('try to close recv file')
+			#self.recv_file.shutdown(socket.SHUT_RDWR)
+			self.recv_file.close()
+		except Exception as er :
+			pass
+		#print('recv file close')
 		#sys.exit()
 	def parse_data(self, data, content_type) :
 		try :

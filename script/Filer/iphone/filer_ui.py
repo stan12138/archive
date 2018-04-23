@@ -21,6 +21,27 @@ def make_new_table(path) :
 	current_list = lst
 	return lst,source
 
+class TextViewDelegate (object):
+	def textview_should_begin_editing(self, textview):
+		self.t = textview
+		self.button.hidden = False
+		self.button.action = self.button_action
+		return True
+	def textview_did_begin_editing(self, textview):
+		pass
+	def textview_did_end_editing(self, textview):
+		pass
+	def textview_should_change(self, textview, range, replacement):
+		return True
+	def textview_did_change(self, textview):
+		pass
+	def textview_did_change_selection(self, textview):
+		pass
+	def set_button(self,bu) :
+		self.button = bu
+	def button_action(self,sender) :
+		self.t.end_editing()
+		self.button.hidden = True
 
 
 class ProcessBar (ui.View):
@@ -144,8 +165,10 @@ class FileSource(object):
 			lst, source = make_new_table(os.path.join(self.path, self.folders[row]))
 			source.set_nav(self.nav)
 			source.set_call(self.call)
+			source.set_show(self.show)
 			self.nav.push_view(lst)
 		elif section == 1 :
+			self.show(2)
 			self.call("file",full_path(os.path.join(self.path, self.files[row])))
 
 	def set_nav(self, nav) :
@@ -154,26 +177,31 @@ class FileSource(object):
 	def set_call(self, call) :
 		self.call = call
 
-
+	def set_show(self,show) :
+		self.show = show
 
 class MyView (ui.View):
 	def will_close(self):
-		global have_to_close
-		have_to_close = True
+		self.event.set()
 
-	def get_close(self, func) :
-		self.close_fun = func
+	def set_close(self, event) :
+		self.event = event
 
 class UI :
-	def __init__(self) :
+	def __init__(self,close_event) :
 		if appex.is_running_extension() :
 			self.file_path = appex.get_file_path()
 			self.v = ui.load_view("inner_ui")
+			self.v.set_close(close_event)
 			self.window = self.v['show']
 			self.message_box = self.v['message_box']
 			self.message_label = self.v["message_label"]
 			self.send = self.v['send']
-			
+			self.done = self.v['done']
+			self.done.hidden = True
+			de = TextViewDelegate()
+			self.message_box.delegate = de
+			de.set_button(self.done)
 			self.device_source = DeviceSource()
 			self.device_label = self.v["device_label"]
 			self.device_table = self.v["device_table"]
@@ -190,19 +218,27 @@ class UI :
 
 			self.start_page = [self.device_label, self.device_table]
 			self.second_page = [self.window, self.message_box, self.message_label, self.send, self.file_button, self.process, self.get_process]
-
+			self.third_page = []
 			self.show(1)
 
 
 
 		else :
 			self.v = ui.load_view("File_transfer")
-
+			self.v.set_close(close_event)
 			self.window = self.v['show']
-
+			self.file_button = self.v['file_button']
+			self.file_close = self.v['file_close']
 			self.message_box = self.v['message_box']
 			self.message_label = self.v["message_label"]
 			self.send = self.v['send']
+			self.done = self.v['done']
+			self.done.hidden = True
+			de = TextViewDelegate()
+			self.message_box.delegate = de
+			de.set_button(self.done)
+			self.file_button.action = self.file_choose
+			self.file_close.action = self.file_close_action
 			
 			self.device_source = DeviceSource()
 			self.device_label = self.v["device_label"]
@@ -211,7 +247,7 @@ class UI :
 
 			self.device_source.set_tableview(self.device_table)
 
-			self.file_label = self.v["file_label"]
+			#self.file_label = self.v["file_label"]
 			self.process = self.v['bar']
 
 			self.get_process = self.v["bar"]
@@ -220,16 +256,18 @@ class UI :
 			self.file_nav = ui.NavigationView(lst)
 			self.file_source = source
 			source.set_nav(self.file_nav)
-			self.file_nav.x = 390
-			self.file_nav.y = 265
-			self.file_nav.width = 361
-			self.file_nav.height = 331
+			source.set_show(self.show)
+			self.file_nav.x = 6
+			self.file_nav.y = 62
+			self.file_nav.width = 308
+			self.file_nav.height = 403
 			self.file_nav.border_color = '#f0f0f0'
 			self.file_nav.border_width = 1
 			self.v.add_subview(self.file_nav)
 
 			self.start_page = [self.device_label, self.device_table]
-			self.second_page = [self.window, self.message_box, self.message_label, self.send, self.file_label, self.file_nav, self.process, self.get_process]
+			self.second_page = [self.window, self.message_box, self.message_label, self.send, self.file_button,self.process, self.get_process]
+			self.third_page = [self.file_close,self.file_nav]
 
 			self.show(1)
 		
@@ -241,13 +279,30 @@ class UI :
 			for i in self.second_page :
 				#print(type(i),dir(i))
 				i.hidden = True
+			for i in self.third_page :
+				i.hidden = True
 			#print('show 1 work')
-		else :
+		elif page==2 :
 			for i in self.start_page :
 				i.hidden = True
 			for i in self.second_page :
 				i.hidden = False	
-
+			for i in self.third_page :
+				i.hidden = True
+		elif page==3 :
+			for i in self.start_page :
+				i.hidden = True
+			for i in self.second_page :
+				i.hidden = True
+			for i in self.third_page :
+				i.hidden = False
+			
+	def file_choose(self,sender) :
+		self.show(3)		
+	
+	def file_close_action(self,sender) :
+		self.show(2)	
+				
 	def run(self) :
 		self.v.present('fullscreen')
 

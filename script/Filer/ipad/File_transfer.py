@@ -4,6 +4,7 @@ import socket
 import sys
 import os
 import appex
+import configparser
 
 from filer_ui import UI,have_to_close
 from filer_ip import IP_Handler
@@ -16,17 +17,21 @@ class Manager :
 		self.get_partner = False
 
 		self.show_lock = threading.Lock()
-
-		self.ui = UI()
-		
-		self.ip_handler = IP_Handler(('10.112.101.153',6000))
+		self.close_event = threading.Event()
+		self.close_event.clear()
+		self.ui = UI(self.close_event)
+		cf = configparser.ConfigParser()
+		cf.read('filer.conf')
+		server_ip = cf.get('ip-server','ip')
+		server_port = cf.getint('ip-server','port')
+		self.ip_handler = IP_Handler((server_ip,server_port))
 		self.ip_handler.set_update_ui_caller(self.ui.device_source.set_device)
 		self.ui.device_source.set_call(self.get_device)
 
 		self.partner_address = ""
 
 		self.communicater = CommunicateServer(self.ui.window, self.get_device, self.ui.message_box, self.ui.send, self.ui.process, self.ui.get_process)
-		self.ui.v.get_close(self.shutdown)
+		#self.ui.v.get_close(self.shutdown)
 		if appex.is_running_extension() :
 			self.ui.set_file_button_caller(self.communicater.set_send)
 		else :
@@ -55,8 +60,7 @@ class Manager :
 		cilent_thread = threading.Thread(target=self.communicater.client_run, daemon=True)
 		cilent_thread.start()
 		
-		while not have_to_close :
-			pass
+		self.close_event.wait()
 		#print('recv stop signal')
 		self.shutdown()
 	
