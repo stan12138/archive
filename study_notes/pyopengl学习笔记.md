@@ -14,6 +14,12 @@
 
 [好多呀](https://learnopengl-cn.readthedocs.io/zh/latest/06%20In%20Practice/02%20Text%20Rendering/)
 
+[another](https://blog.csdn.net/column/details/13062.html?&page=2)
+
+[another](https://blog.csdn.net/wangdingqiaoit)
+
+
+
 ### 环境构建
 
 哇，之前竟然忘记记录一下我是怎么构建环境的，然后现在又费了九牛二虎之力去重新翻看youtube
