@@ -12,14 +12,14 @@
 
         ],
         "attributes" : {
-          "font_name" : "<System>",
+          "name" : "device_label",
           "frame" : "{{85, 224}, {150, 32}}",
           "uuid" : "DA49CFDD-57EB-43EA-BC3F-CC6681ABACCD",
           "class" : "Label",
           "alignment" : "center",
           "text" : "Device",
-          "name" : "device_label",
-          "font_size" : 18
+          "font_size" : 18,
+          "font_name" : "<System>"
         }
       },
       {
@@ -32,13 +32,13 @@
         "attributes" : {
           "flex" : "WH",
           "data_source_items" : "",
-          "uuid" : "FD8653D7-AADB-418E-913C-E202498F866A",
+          "data_source_font_size" : 18,
           "frame" : "{{60, 140}, {200, 200}}",
+          "uuid" : "FD8653D7-AADB-418E-913C-E202498F866A",
           "data_source_number_of_lines" : 1,
           "class" : "TableView",
           "background_color" : "RGBA(1.0, 1.0, 1.0, 1.0)",
           "data_source_delete_enabled" : true,
-          "data_source_font_size" : 18,
           "name" : "device_table",
           "row_height" : 44
         }
@@ -52,7 +52,7 @@
         ],
         "attributes" : {
           "uuid" : "2BCD8846-05AE-448D-94B3-17E3AA0099E2",
-          "flex" : "WH",
+          "font_size" : 17,
           "corner_radius" : 10,
           "frame" : "{{60, 140}, {200, 200}}",
           "editable" : true,
@@ -63,7 +63,7 @@
           "spellchecking_type" : "default",
           "class" : "TextView",
           "name" : "show",
-          "font_size" : 17
+          "flex" : "WH"
         }
       },
       {
@@ -75,7 +75,7 @@
         ],
         "attributes" : {
           "uuid" : "0420EFC5-7817-40F1-A803-4DEAFE70319E",
-          "flex" : "WH",
+          "font_size" : 17,
           "corner_radius" : 10,
           "frame" : "{{60, 140}, {200, 200}}",
           "editable" : true,
@@ -86,7 +86,7 @@
           "spellchecking_type" : "default",
           "class" : "TextView",
           "name" : "message_box",
-          "font_size" : 17
+          "flex" : "WH"
         }
       },
       {
@@ -135,11 +135,11 @@
 
         ],
         "attributes" : {
-          "uuid" : "C929D7BF-9FF0-457B-8C11-9B0AF0AFFAC1",
-          "frame" : "{{110, 190}, {100, 100}}",
-          "custom_class" : "ProcessBar",
           "class" : "View",
-          "name" : "bar"
+          "frame" : "{{110, 190}, {100, 100}}",
+          "name" : "bar",
+          "custom_class" : "ProcessBar",
+          "uuid" : "C929D7BF-9FF0-457B-8C11-9B0AF0AFFAC1"
         }
       },
       {
@@ -150,24 +150,43 @@
 
         ],
         "attributes" : {
-          "font_name" : "<System>",
+          "name" : "message_label",
           "frame" : "{{85, 224}, {150, 32}}",
           "uuid" : "33FF73D1-DC5D-4A34-A7C0-E8F1E15F0346",
           "class" : "Label",
           "alignment" : "left",
           "text" : "Message",
-          "name" : "message_label",
-          "font_size" : 18
+          "font_size" : 18,
+          "font_name" : "<System>"
+        }
+      },
+      {
+        "selected" : false,
+        "frame" : "{{234, 90}, {80, 32}}",
+        "class" : "Button",
+        "nodes" : [
+
+        ],
+        "attributes" : {
+          "border_width" : 0,
+          "frame" : "{{120, 224}, {80, 32}}",
+          "title" : "Done",
+          "uuid" : "5E308B9D-A14A-44B4-A5DE-7EDC47BCC017",
+          "class" : "Button",
+          "corner_radius" : 5,
+          "border_color" : "RGBA(0.333333,1.000000,0.333333,1.000000)",
+          "name" : "done",
+          "font_size" : 15
         }
       }
     ],
     "attributes" : {
-      "flex" : "",
+      "tint_color" : "RGBA(0.000000,0.478000,1.000000,1.000000)",
       "enabled" : true,
+      "border_color" : "RGBA(0.000000,0.000000,0.000000,1.000000)",
       "background_color" : "RGBA(1.000000,1.000000,1.000000,1.000000)",
       "custom_class" : "MyView",
-      "tint_color" : "RGBA(0.000000,0.478000,1.000000,1.000000)",
-      "border_color" : "RGBA(0.000000,0.000000,0.000000,1.000000)"
+      "flex" : ""
     }
   }
 ]

@@ -13,11 +13,11 @@ import configparser
 
 
 class IP_Handler :
-	def __init__(self, server_address) :
+	def __init__(self, server_address, port) :
 		self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 		self.server_address = server_address
 		self.ID = 'Stan-Laptop'
-		self.port = 63834
+		self.port = port
 		
 		self.device = []
 	def connect(self) :
@@ -54,7 +54,7 @@ class IP_Handler :
 				if s :
 					s = s.split('\n')
 					self.device.append((s[0],s[2],int(s[1])))
-		print(self.device)
+		self.device_caller(self.device)
 	
 	def off_line(self) :
 		self.client.send(b'off-line')
@@ -68,11 +68,19 @@ class IP_Handler :
 		except :
 			pass
 
+	def set_devices_caller(self, func) :
+		self.device_caller = func
+
 class CommunicateServer :
 	def __init__(self) :
-
-		self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-		self.server.bind(('', 63834))
+		self.port = 63834
+		while True :
+			try :
+				self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+				self.server.bind(('', self.port))
+				break
+			except OSError :
+				self.port += 1
 		self.server.listen(5)
 
 		self.recv_server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -187,7 +195,7 @@ class CommunicateServer :
 				file_size, times, filename = data
 				length = 0
 				print(file_size, filename)
-				with open(filename,'wb') as fi :		#18.4.9 0:05 文件传输出现错误，无法读取足够长度的内容，未知错误出在何处，发送或者接受？
+				with open('inbox/'+filename,'wb') as fi :		#18.4.9 0:05 文件传输出现错误，无法读取足够长度的内容，未知错误出在何处，发送或者接受？
 					while  True:
 						data = self.recv_server.recv(self.recv_size)
 						#同样不知道为啥，如果此处使用file进行接收一定会丢失一些字节
@@ -224,35 +232,57 @@ class CommunicateServer :
 			data = data.split('\r\n')
 			return int(data[0]), int(data[1]), data[2]
 
+class Manager :
+	def __init__(self) :
 
+		self.all_devices = []
+		self.partner_address = ()
+
+		cf = configparser.ConfigParser()
+		cf.read("filer.conf")
+
+		server_address = (cf.get("ip-server","ip"),cf.getint("ip-server", "port"))
+		client_address = []
+		choose_already = False
+
+		self.my_client = CommunicateServer()
+		self.ip_reporter = IP_Handler(server_address, self.my_client.port)
+		self.ip_reporter.set_devices_caller(self.get_devices)
+
+	def run(self) :
+		self.ip_thread = threading.Thread(target=self.ip_reporter.run, daemon=True)
+		self.server_thread = threading.Thread(target=self.my_client.server_run, daemon=True)
+
+		self.ip_thread.start()
+		self.server_thread.start()
+
+		while self.my_client.send_try_connect:
+			pass
+
+		time.sleep(1)
+		self.ip_reporter.off_line()
+
+		print("my_client.get_client_address",self.my_client.get_client_address)
+		self.my_client.partner_address = self.find_partner(self.my_client.get_client_address)
+		self.client_thread = threading.Thread(target=self.my_client.client_run, daemon=False)
+		self.client_thread.start()
+		self.client_thread.join()
+		print("client runing.....")
+
+	def get_devices(self, devices) :
+		[self.all_devices.append(d) for d in  [i for i in devices if not i in self.all_devices]]
+		print(self.all_devices)
+
+
+	def find_partner(self, ip) :
+		for d in self.all_devices :
+			if ip==d[1] :
+				return (d[1], d[2])
 
 
 if __name__ == '__main__':
-	cf = configparser.ConfigParser()
-	cf.read('filer.conf')
-	server_address = (cf.get("ip-server","ip"), cf.getint("ip-server", "port"))
-	client_address = []
-	choose_already = False
-
-	ip_reporter = IP_Handler(server_address)
-
-	my_client = CommunicateServer()
-
-	ip_thread = threading.Thread(target=ip_reporter.run, daemon=True)
-	server_thread = threading.Thread(target=my_client.server_run, daemon=True)
-
-	ip_thread.start()
-	server_thread.start()
-	print("first two thread run already")
-	while my_client.send_try_connect :
-		pass
-	time.sleep(1)
-	ip_reporter.off_line()
-	print("my_client.get_client_address",my_client.get_client_address)
-	my_client.partner_address = (my_client.get_client_address,63834)
-	client_thread = threading.Thread(target=my_client.client_run, daemon=False)
-	client_thread.start()
-	print("client runing.....")
+	manger = Manager()
+	manger.run()
 
 #我发现了一个巨牛叉的事情，已经知道了，我们可以在其他程序内部运行python，刚才测试了ui也是可以的哦，你明白什么意思
 #然后，更加牛叉的是，我发现了从网上弄到的那个转移文件的程序的工作方法是拿到了原本文件的绝对路径而已，这意味着我可以把这个嵌入到我的代码里面

@@ -14,6 +14,8 @@ from filer_server import CommunicateServer
 class Manager :
 	def __init__(self) :
 
+		self.all_devices = []
+
 		self.get_partner = False
 
 		self.show_lock = threading.Lock()
@@ -24,14 +26,17 @@ class Manager :
 		cf.read('filer.conf')
 		server_ip = cf.get('ip-server','ip')
 		server_port = cf.getint('ip-server','port')
-		self.ip_handler = IP_Handler((server_ip,server_port))
-		self.ip_handler.set_update_ui_caller(self.ui.device_source.set_device)
+		
 		self.ui.device_source.set_call(self.get_device)
 
 		self.partner_address = ""
 
 		self.communicater = CommunicateServer(self.ui.window, self.get_device, self.ui.message_box, self.ui.send, self.ui.process, self.ui.get_process)
-		#self.ui.v.get_close(self.shutdown)
+
+		self.ip_handler = IP_Handler((server_ip,server_port),self.communicater.port)
+		self.ip_handler.set_update_ui_caller(self.special_device_handler) #因为要查询设备端口，所以我只能截断原本的联系
+
+
 		if appex.is_running_extension() :
 			self.ui.set_file_button_caller(self.communicater.set_send)
 		else :
@@ -41,6 +46,7 @@ class Manager :
 		
 		self.ip_handler.off_line()
 		self.communicater.shutdown()
+
 	def run(self) :
 
 		ui_thread = threading.Thread(target=self.ui.run, daemon=True)
@@ -50,6 +56,7 @@ class Manager :
 		ui_thread.start()
 		ip_thread.start()
 		server_thread.start()
+		#print('ip handler runing')
 
 		while not self.partner_address :
 			pass
@@ -65,8 +72,19 @@ class Manager :
 		self.shutdown()
 	
 	def get_device(self,address) :
-		self.partner_address = address
-		self.communicater.set_partner(address)
+		ip = address[0]
+		for device in self.all_devices :
+			if ip == device[1] :
+				self.partner_address = (device[1],device[2])
+				break
+		self.communicater.set_partner(self.partner_address)
+
+	def special_device_handler(self,devices) :
+		x = [self.all_devices.append(d) for d in  [i for i in devices if not i in self.all_devices]]
+		#print(self.all_devices)
+		#print('ready to set ui device')
+		self.ui.device_source.set_device(devices)
+		#print('ui device update done')
 
 if __name__ == '__main__':
 	mama = Manager()

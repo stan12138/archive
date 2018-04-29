@@ -2,11 +2,11 @@ import socket
 
 
 class IP_Handler :
-	def __init__(self, server_address) :
+	def __init__(self, server_address, port) :
 		self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 		self.server_address = server_address
 		self.ID = 'Stan-iPad'
-		self.port = 63834
+		self.port = port
 		
 		self.device = []
 		
@@ -23,6 +23,7 @@ class IP_Handler :
 				pass
 	
 	def report(self) :
+		#print('begin report')
 		self.success = False
 		while not self.success :
 			self.client.send(bytes(self.ID+'\n'+str(self.port),'utf-8'))
@@ -49,7 +50,7 @@ class IP_Handler :
 			for s in message :
 				if s :
 					s = s.split('\n')
-					self.device.append((s[0],s[2],int(s[1])))
+					self.device.append((s[0],s[2],int(s[1]))) #列表的每一项是一个设备的元组，每个元组的结构都是(ID,ip,port)
 		#print(self.device)
 		self.call(self.device)
 		#print('call already')

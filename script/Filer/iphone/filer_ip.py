@@ -2,11 +2,11 @@ import socket
 
 
 class IP_Handler :
-	def __init__(self, server_address) :
+	def __init__(self, server_address, port) :
 		self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 		self.server_address = server_address
 		self.ID = 'Stan-iPhone'
-		self.port = 63834
+		self.port = port
 		
 		self.device = []
 		

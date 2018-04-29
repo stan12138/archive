@@ -13,6 +13,9 @@ from filer_server import CommunicateServer
 
 class Manager :
 	def __init__(self) :
+
+		self.all_devices = []
+
 		cf = configparser.ConfigParser()
 		cf.read('filer.conf')
 		self.get_partner = False
@@ -21,14 +24,17 @@ class Manager :
 		self.close_event = threading.Event()
 		self.close_event.clear()
 		self.ui = UI(self.close_event)
+
+
+		self.communicater = CommunicateServer(self.ui.window, self.get_device, self.ui.message_box, self.ui.send, self.ui.process, self.ui.get_process)
 		
-		self.ip_handler = IP_Handler((cf.get('ip-server','ip'),cf.getint('ip-server','port')))
-		self.ip_handler.set_update_ui_caller(self.ui.device_source.set_device)
+		self.ip_handler = IP_Handler((cf.get('ip-server','ip'),cf.getint('ip-server','port')), self.communicater.port)
+		self.ip_handler.set_update_ui_caller(self.special_device_handler)
 		self.ui.device_source.set_call(self.get_device)
 
 		self.partner_address = ""
 
-		self.communicater = CommunicateServer(self.ui.window, self.get_device, self.ui.message_box, self.ui.send, self.ui.process, self.ui.get_process)
+		
 		#self.ui.v.get_close(self.shutdown)
 		if appex.is_running_extension() :
 			self.ui.set_file_button_caller(self.communicater.set_send)
@@ -63,8 +69,17 @@ class Manager :
 		self.shutdown()
 	
 	def get_device(self,address) :
-		self.partner_address = address
-		self.communicater.set_partner(address)
+		ip = address[0]
+		for d in self.all_devices :
+			if ip == d[1] :
+				self.partner_address = (d[1], d[2])
+				break
+		self.communicater.set_partner(self.partner_address)
+
+
+	def special_device_handler(self, devices) :
+		x = [self.all_devices.append(d) for d in [i for i in devices if not i in self.all_devices]]
+		self.ui.device_source.set_device(devices)
 
 if __name__ == '__main__':
 	mama = Manager()

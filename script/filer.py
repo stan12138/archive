@@ -85,7 +85,7 @@ class CommunicateServer :
 		self.send_connect = False
 		self.recv_connect = False
 
-		self.recv_size = 1024*32
+		self.recv_size = 1024*512
 	def server_run(self) :
 		#try_connect = True
 

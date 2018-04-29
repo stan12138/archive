@@ -7,8 +7,15 @@ import console
 class CommunicateServer :
 	def __init__(self, window, get_device_caller, message_box, send_button, file_bar, get_bar) :
 
-		self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-		self.server.bind(('', 63834))
+		self.port = 63834
+
+		while True :
+			try :
+				self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+				self.server.bind(('', self.port))
+				break
+			except OSError :
+				self.port += 1
 		self.server.listen(5)
 		self.window = window
 		self.get_device_caller = get_device_caller
