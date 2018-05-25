@@ -77,3 +77,93 @@ learnopengl这个网站是我常用的opengl的参考网站，它上面关于ass
 至于最新版本中就似乎不再需要DirectX了，所以也就不再有解决这个问题的必要了。
 
 总之，现在就是这样。
+
+
+
+### 代码组织
+
+唉，又要继续代码组织问题了，手动编译确实会很烦。
+
+我认为，规范的代码组织应该是这样的：
+
+~~~
+--headers
+  -- xxx.h
+  -- xxx.h
+--lib
+  --glad.c
+  --glad.o
+  --libglfw3dll.a
+  --xxx.o
+  --xxx.cpp
+--images
+  --xxx.png
+--basic_texture.cpp
+~~~
+
+差不多吧，明白我的意思就好。
+
+我们需要依赖的库和模块包括了:
+
+- glfw的静态链接库
+- glad.o
+- stb_image.o
+- Shader.o
+- Texture.o
+
+除此之外，系统提供的opengl,glu,gdi什么的就不说了
+
+glfw的链接库是通过cmake得到的，所以我们不可能实时编译，肯定是预先弄好的
+
+glad的情况其实略复杂，它会依赖一些特定路径的头文件，原则上，这对我来说应该完全不是问题，解决这个问题的方法多得是，可以通过按照他的期望存储文件，也可以通过修改源码，还可以通过在gcc命令中添加参数。但是我想规范的话的时候，却出了点问题，我也无心解决，所以，目前的暂缓之计就是按照他的期望放置，然后编译，再把得到的文件直接放进lib
+
+至于stb_image库，这是一个用于导入图片的库，这个库的使用很简单，他只是一个单一的头文件而已，但是我们还是需要做一些额外的工作，新建一个cpp文件，可以任意命名，但是最好命名为`stb_image.cpp`，内容很简单，只有这些内容：
+
+~~~c++
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
+~~~
+
+我们只需要将其编译为`.o`文件，然后在编译主文件的时候，只需要将其连接上去即可，至于其他需要使用这个文件的库，只需要包含`stb_image.h`头文件即可。我试过在其他文件中把上面的预编译器带上，以取代这个额外的文件，但是并不行，会报错。
+
+至于Shader和Texture这两个库，是我自行写的，或者说抄的，作用分别是导入着色器文件和处理纹理，主要是为了简化代码。这两个库的设计还是有不少需要主要的点的，但是我并不准备附上代码做解释，看learnopengl上面的源码仿照着写就没问题。
+
+编译的时候，我的策略是使用makefile，写的很垃圾，但是至少可以工作：
+
+~~~makefile
+header_folder = headers
+lib_folder = lib
+source_file = basic_texture.cpp
+target = basic_texture
+vpath %.h $(header_folder)
+vpath %.o $(lib_folder)
+vpath %.cpp $(lib_folder)
+
+
+std_image = $(lib_folder)/stb_image.o
+Shader = $(lib_folder)/Shader.o
+Texture = $(lib_folder)/Texture.o
+glad = $(lib_folder)/glad.o
+
+$(target) : glad.h glfw3.h glad.o Shader.h Shader.o Texture.o stb_image.o
+	g++ -I$(header_folder) -L$(lib_folder) -o $(target) $(source_file) $(std_image) $(glad) $(Shader) $(Texture) -lglfw3dll -lopengl32 -lglu32 -lgdi32
+
+stb_image.o : stb_image.cpp stb_image.h
+	g++ -I$(header_folder) -o $(std_image) -c $(lib_folder)/stb_image.cpp
+
+Shader.o : Shader.cpp Shader.h
+	g++ -I$(header_folder) -o $(Shader) -c $(lib_folder)/Shader.cpp
+
+Texture.o : Texture.h Texture.cpp
+	g++ -I$(header_folder) -o $(Texture) -c $(lib_folder)/Texture.cpp
+
+.PHONY : clean
+
+clean :
+	rm $(target).exe
+~~~
+
+so，到目前为止，基本的着色器加载和纹理使用已经搞定了。
+
+下一步是摄像机和trackball
+
