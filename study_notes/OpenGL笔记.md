@@ -167,3 +167,130 @@ so，到目前为止，基本的着色器加载和纹理使用已经搞定了。
 
 下一步是摄像机和trackball
 
+
+
+### Assimp编译、使用与模型加载
+
+前面说的Assimp的编译的确是不行的
+
+首先，我们必须安装DirectX，去[这里](https://www.microsoft.com/en-us/download/details.aspx?id=6812)，下载安装，如果遇到`S1023`的安装错误，那么我们需要首先卸载`C++ Redistributable package(s) `2010版，然后就可以安装了
+
+我现在的编译，直接使用Assimp的github最新版，而没有使用发行版，编译的过程中，还是首先使用cmake，然后再make，但是因为某些格式在make的过程中会出现错误，所以，我的策略是直接忽略这些格式方法是修改源码code文件夹下的`CMakeLists.txt`，这个文件控制着如何编译不同格式的Impoter，我添加了如下部分：
+
+~~~cmake
+set(ASSIMP_BUILD_IFC_IMPORTER FALSE)
+set(ASSIMP_BUILD_GLTF_IMPORTER FALSE)
+set(ASSIMP_BUILD_AMF_IMPORTER FALSE)
+set(ASSIMP_BUILD_ASSBIN_IMPORTER FALSE)
+set(ASSIMP_BUILD_COLLADA_IMPORTER FALSE)
+set(ASSIMP_BUILD_IRRMESH_IMPORTER FALSE)
+set(ASSIMP_BUILD_IRR_IMPORTER FALSE)
+set(ASSIMP_BUILD_OGRE_IMPORTER FALSE)
+set(ASSIMP_BUILD_XGL_IMPORTER FALSE)
+set(ASSIMP_BUILD_X3D_IMPORTER FALSE)
+set(ASSIMP_BUILD_3MF_IMPORTER FALSE)
+~~~
+
+位置的话，我放在了包含判断`ASSIMP_BUILD_ALL_IMPORTERS_BY_DEFAULT`的`MACRO`的后面
+
+明显这样做是因为现在的版本太不友善了，我们只能选择是否按照默认编译所有的Impoter，如果不勾选将不编译任何的，这个做法很傻。
+
+然后在cmake的config中我会取消勾选：
+
+~~~
+ASSIMP_BUILD_ASSIMP_TOOLS
+ASSIMP_BUILD_ASSIMP_VIEW
+ASSIMP_BUILD_TESTS
+BUILD_SHARED_LIBS
+~~~
+
+然后要选上`ASSIMP_BUILD_ZLIB`
+
+解释一下，取消的前三个明显是一些测试和检查的相关工具，没必要构建，并且构建的过程中似乎往往出问题
+
+最后一个是构建动态链接库，明显我们想要的是静态链接
+
+选上的ZLIB是一个叫做zlib的工具，跟压缩解压相关的，如果不构建，它将自动去系统里找，找到的往往是一些奇怪的，没法用，所以我们要自己构建。
+
+然后，这样应该就没问题了
+
+make的过程应该是基本不报错的，如果报错的话那就必须继续修改，直至make成功的构建了`libassimp.a`，一定是这个名字，然后中间如果报错的话，我们应该根据情况继续处理，如果是某个格式的Importer，就把它也忽略了
+
+编译完成之后，我们应该在build的code里面可以找到`libassimp.a`这个静态库，另外我们还需要`contrib\zlib`里面的`libzlibstatic.a和zconf.h`文件，前者是我们需要的assimp库，明显。后两者就是我们构建zlib静态库和头文件，按道理说他们应该会被自动包含在assimp的静态库里面的，但是并没有，似乎我们也可以把它包含进去，但是我还没试
+
+然后我们需要把头文件放在合适的地方，静态库放在合适的地方，针对特定的文件结构，我的一个编译命令是这样的：
+
+`g++ model_loading.cpp -I. -L. glad.o stb_image.o -lglfw3dll -lopengl32 -lglu32 -lgdi32 -lassimp -lzlibstatic`
+
+应该可以看出来我想说明什么吧。
+
+这里还要说的是，之所以我用了zlib是因为在最后的使用编译中爆出了什么`_flatten_int_32`差不多吧，类似这个名字的错误，去网上搜就可以知道这是因为少了zlib
+
+然后因为原本还报了跟irrXML相关的错，所以我把相关格式的importer也删了，所以可能有一些误伤，也许你可以尝试一下把`contrib\irrXML`里面的什么静态链接库也弄进去，也许就没必要删这么多格式了，至于可能还需要什么头文件之类的，大概就是这种思路，自行解决吧，感兴趣的话。
+
+
+
+你以为到这里就结束了吗？naive
+
+assimp的使用是一件巨复杂的事情，我们需要一些辅助的工具再从assimp的解析结果中构建出我们想要的数据结构，我主要参考learnopengl的教程和叫[王定桥的博主的教程](https://blog.csdn.net/wangdingqiaoit/article/details/52014321#comments)构建自己的model和mesh，我觉得后者写得还好一点，因为有了各种`has`相关的存在性判断什么的，但是遗憾的是我到现在都没成功，主要是模型不显示，原因未知，但是我使用learnopegl的github代码，做了一些文件结构调整，同时使用我自行编译的各种库让模型显示成功了，这说明库的编译是可以的，还是代码的原因，假以时日，做一些比对，一定可以发现问题所在。
+
+
+
+我花费了大量的时间在查找错误所在，甚至重写了两遍我自己的mesh和model，但是无济于事，我甚至尝试了互相替换所有的文件，中间的过程简直让人有几分焦头烂额，但是，最终我找到了原因所在，令人难以置信，原因竟然是glm，我下载的glm似乎还是最新版本的，但是竟然不行，反而是learnopengl提供的20134版正常工作了，难以置信，我现在依旧在尝试查找glm到底是出了什么问题，同时将会逐步将所有的文件替换为我自己写的。
+
+
+
+
+
+### 下一步
+
+最能吸引注意力的几个部分应该是：摄像机系统，模型载入，天空盒，光照
+
+一直以来我使用的教程就是learnopengl，这个教程的质量可以说是相当高的，对于入门者而言。但是它的缺憾在于不是足够细致，例如：一开始就是窗口，三角形，着色器，纹理。这是让入门者可以快速写出点什么来，对opengl有一点感觉的方法，但是我的意思是，一旦入了一点门之后，可能我们还是会想要一点更加细致，系统和全面的知识。
+
+这个时候，我推荐OpenGL超级宝典，俗称蓝宝书。原本，我尝试过使用这个来入门，但是完全云里雾里，看不懂。现在我发现，我可以了。
+
+so，下一步我会花一些时间在这个上面，在基础上多花一点时间。
+
+
+
+### 基础图元
+
+
+
+#### 图元
+
+七种图元
+
+~~~
+GL_POINTS           单点
+GL_LINES            两个点组成一个线段
+GL_LINE_STRIP	    依次组成连续线条
+GL_LINE_LOOP        线圈
+GL_TRIANGLES
+GL_TRIANGLES_STRIP
+GL_TRIANGLE_FAN
+~~~
+
+##### 点
+
+~~~
+void glPointSize(GLfloat size);
+float sizes[2], step;
+
+glGetFloatv(GL_POINT_SIZE_RANGE, sizes);
+glGetFloatv(GL_POINT_SIZE_GRANULARITY, &step);
+~~~
+
+点总是正方形像素，要获得圆点只能使用抗锯齿模式进行绘制
+
+
+
+##### 线
+
+
+
+
+
+
+
