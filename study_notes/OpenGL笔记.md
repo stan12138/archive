@@ -240,6 +240,107 @@ assimp的使用是一件巨复杂的事情，我们需要一些辅助的工具�
 
 
 
+### 缓冲区的使用
+
+这里主要指的是VAO,VBO,EBO
+
+这三者分别是顶点数组，顶点缓存，索引缓存
+
+他们的用处分别是管理一个对象，存储顶点数据，存储索引数据。VAO的存在主要用于多个对象的管理，如果存在多个对象，我们只需要为各自设置一个VAO，然后绑定某个对象的VAO，就可以绘制这个对象。VBO用于存储一个对象的所有顶点，EBO的作用是索引这些顶点，这样可以避免重复存储相同的顶点。
+
+需要注意的问题就是，怎样使用这些东西，或者说次序。
+
+每一个缓存都需要先生成一个缓存，然后绑定，然后存入数据，然后需要设置pointer，大致的过程是下面这样的：
+
+~~~c++
+unsigned int VAO, VBO, EBO;
+glGenVertexArrays(1, &VAO);
+glGenBuffers(1, &VBO);
+glGenBuffers(1, &EBO);
+
+glBindVertexArray(VAO);
+
+glBindBuffer(GL_ARRAY_BUFFER, VBO);
+glBufferData(GL_ARRAY_BUFFER, sizeof(Vertex)*mesh_vertexes.size(), &mesh_vertexes[0], GL_STATIC_DRAW);
+
+
+glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned int)*mesh_indices.size(), &mesh_indices[0], GL_STATIC_DRAW);
+
+// vertex_position 0     normal 1   texture_position 2     tangent 3    bitangent 4
+glEnableVertexAttribArray(0);
+glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)0);
+// vertex normals
+
+
+glBindVertexArray(0);
+~~~
+
+但是VAO要在先绑定之后，然后处理VBO和EBO，这样才能让VAO起作用。至于Pointer，无论是先enable还是先pointer都是可以的，只要是在绘制之前就行。
+
+
+
+
+
+### 输入
+
+这里记录一下glfw是怎么处理输入的
+
+glfw的输入，我们一般而言关注的也就是键盘和鼠标，但是它的接口因为这些输入的输出数据的原因，被搞得有些复杂，我们基本上需要为键盘，鼠标位置，鼠标按钮，鼠标滚轮各自设置一个handler。
+
+下面分别列出这些handler的写法：
+
+1. 键盘：
+
+   ~~~c++
+   glfwSetKeyCallback(window, key_callback);
+   
+   void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
+   {
+       if (key == GLFW_KEY_E && action == GLFW_PRESS)
+           activate_airship();
+   }
+   ~~~
+
+   这里的参数意义都比较明显，我们经常使用的也就是window, key, action而已，至于key的值是一系列的宏，详细列表[在这里](http://www.glfw.org/docs/latest/group__keys.html)
+
+2. 鼠标位置：
+
+   ~~~c++
+   glfwSetCursorPosCallback(window, cursor_pos_callback);
+   static void cursor_position_callback(GLFWwindow* window, double xpos, double ypos)
+   {
+   }
+   ~~~
+
+3. 鼠标按钮：
+
+   ~~~c++
+   glfwSetMouseButtonCallback(window, mouse_button_callback);
+   void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
+   {
+       if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS)
+           popup_menu();
+   }
+   ~~~
+
+   鼠标的按键也是一系列的宏，列表[在这里](http://www.glfw.org/docs/latest/group__buttons.html)
+
+4. 鼠标滚轮：
+
+   ~~~c++
+   glfwSetScrollCallback(window, scroll_callback);
+   void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
+   {
+   }
+   ~~~
+
+   我不清楚它为什么要设置一个xoffset，事实上有用的只有yoffset而已，并且yoffset的值只有-1或1而已。
+
+我希望可以搞一个头文件什么的，把这些处理函数统一放进去，这一就可以免得每个源文件里面都要写一遍，但是问题在于某些情况下可能又会需要对每个事件做特殊的处理，所以，我不知道该怎么处理了。也许只能选择在每个源文件里面都写一遍了，但是对于特定的部分，可以编写一个另外的接口，这样就可以使得源文件里面的输入handler尽可能的简单了。例如，对于相机来说，可以额外写一个控制器。
+
+
+
 
 
 ### 下一步
