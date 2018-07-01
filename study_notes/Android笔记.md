@@ -217,3 +217,16 @@ mFalseButton.setOnClickListener(new View.OnClickListener() {
 
 很明显，这里展示了Toast的用法，并额外的使用了字符串资源
 
+
+
+
+
+## Android with Kotlin
+
+再一次重启，Java实在是有点烦，既然Kotlin又简单，又是未来，所以就干脆换到Kotlin。
+
+
+
+### 学习目标
+
+我意识到，之前的学习之所以

@@ -706,5 +706,56 @@ style()->drawPrimitive (QStyle::PE_Widget, &opt, &p, this);
 
 
 
+### 多界面设计
+
+当项目当中具有多个ui文件的时候，我们应该如何引用这些ui文件？
+
+解决这一切问题的关键在于我们需要直到ui文件是如何起作用的，每一个ui文件都有一个名字，例如`uiname.ui`，然后这个ui文件还有必然有一个根元素，例如是一个QWidget，它有一个objectName，例如是`Form`，那么我们其实可以尝试先编译一下，虽然会报错，但是会产生我们想要的一些文件，例如我们会发现每个ui文件都会生成一个`ui_uiname.h`的头文件，打开头文件，我们会发现里面包含了一个叫做`Ui_Form`的类，并且这个类被以`Form`的类名字放进了Ui的namespace中。至此，我们基本上已经得到了我们想要的所有信息。
+
+如果我们想使用在主界面的类文件里面使用特定的ui文件，那么我们首先要包含这个ui文件对应的头文件，然后就可以通过头文件对应的类引用这个ui文件里面的主元素了，例如下面，虽然我将主窗口的类名设置为了View，也自动生成了名为`view.ui`的ui文件，和对应的`View`的根元素，但是我依旧可以通过修改上面的东西实现将主界面设置为任意我想要的ui文件：
+
+~~~c++
+#ifndef VIEW_H
+#define VIEW_H
+
+#include <QWidget>
+#include "ui_config.h"   //引用这个头文件才能得到Ui::Form
+
+namespace Ui {
+class View;
+}
+
+class View : public QWidget
+{
+    Q_OBJECT
+
+public:
+    explicit View(QWidget *parent = 0);
+    ~View();
+
+private:
+    Ui::Form *ui;  //更改主界面的类型
+};
+
+#endif // VIEW_H
+~~~
+
+~~~c++
+#include "view.h"
+#include "ui_config.h"  //应用config.ui文件对应的ui_config.h头文件
+
+View::View(QWidget *parent) :
+    QWidget(parent),
+    ui(new Ui::Form)  //将默认的Ui:View更改为我们想要的config.ui的根元素的objectName：Ui::Form
+{
+    ui->setupUi(this);
+}
+
+View::~View()
+{
+    delete ui;
+}
+~~~
+
 
 
