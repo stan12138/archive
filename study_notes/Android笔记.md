@@ -219,6 +219,26 @@ mFalseButton.setOnClickListener(new View.OnClickListener() {
 
 
 
+### 换个模拟器
+
+我依旧需要模拟器，没有Android设备....
+
+Android Studio自带的模拟器一旦启动，电脑就几乎跑不动了，所以我准备换一个Genymotion。
+
+这个的下载要去官网，先注册，验证完毕之后，会自动跳入下载页面，Genymotion的运行依赖VirtuelBox，所以，下载的时候建议下载自带VirtuelBox的版本，一路安装即可。
+
+初次打开软件，需要登陆，没有license的话直接使用默认的Personal用户即可。然后需要通过add添加新的虚拟设备。根据API等级选择合适的设备。之后会自动下载相应内容的。
+
+打开Android Studio，选择`File->setting->plugins->Browse repositories`，搜索Genymotion，安装。
+
+安装完成之后，会在工具栏出现一个Genymotion的图标。。。。
+
+算了，我都是从[这里](https://blog.csdn.net/feather_wch/article/details/79184631)看的，按照他的来即可。
+
+当需要运行的时候，我们首先要在Genymotion中运行我们的设备，但设备已经开启之后，在Android Studio的`run`中即可发现Genymotion的虚拟设备。
+
+
+
 
 
 ## Android with Kotlin
@@ -230,3 +250,128 @@ mFalseButton.setOnClickListener(new View.OnClickListener() {
 ### 学习目标
 
 我意识到，之前的学习之所以
+
+
+
+### 基础记录
+
+kotlin下的安卓实在是很贴心，简化了很多原本在Java下面极其繁琐的操作
+
+获取部件：
+
+~~~kotlin
+button.text = "hello"
+~~~
+
+设计中ID为button的元件，可以直接以变量的形式使用，say goodbye to findViewById
+
+为button设置listener：
+
+~~~kotlin
+button.setOnClickListener()
+{
+    button.text = "click"
+}
+~~~
+
+不需要java里面那样再写内部类，实例化什么了，直接写语句就ok。
+
+插一句，Android官网似乎写的是setOnClickListener后面没有圆括号，但是在Android Studio里面这样写看到的结果是不行。
+
+使用提示：
+
+这里指的是使用Toast
+
+~~~kotlin
+Toast.makeText(this, "clicked", Toast.LENGTH_LONG).show()
+~~~
+
+至于Toast的参数，最后一个明显是显示时间，按照说明，这是一个Int类型，但是试了一下似乎并不太行。。。
+
+设置TextView的text
+
+当直接使用`a.text="hello"`这种方式设置的时候，赋值必须是字符串，这就意味着不能使用`R.string.q1`这样的字符串资源了，因为他们是Int，此时应该调用`setText()`方法
+
+添加图标：
+
+呃，虽然参照Android权威指南上面的教程，我实现了添加图标，但是我并不清楚他是怎么工作的，我不知道系统是怎么区分图标的分辨率的
+
+所以，这一部分的笔记再等等吧
+
+
+
+### 生命周期
+
+![Snipaste_2018-07-15_18-08-47](images/Snipaste_2018-07-15_18-08-47.png)
+
+这个图还是挺清晰的
+
+绝对不要自行调用上述方法，我们要做的只是覆盖，系统会自动调用
+
+
+
+#### 日志
+
+日志是输出的方式，类似于Qt里面的qDebug，使用方法是：
+
+一般需要设置一个tag，是一个字符串，因为日志是会自动产生相当多信息的，为了筛选我们想要的，我们可以使用tag进行筛选，但是据我的测试，tag似乎不能包含空格？好像吧
+
+用法很简单`Log.d(tag, "message")`即可，输出是在Logcat。
+
+##### 日志级别
+
+~~~kotlin
+Log.e() //错误
+Log.w() //警告
+Log.i() //信息
+Log.d() //调试
+Log.v() //VERBOSE只用于开发
+~~~
+
+
+
+#### 状态保存
+
+之前已经知道了，旋转屏幕的时候，会销毁再重建Activity，甚至回到主屏幕等某些时候也会导致状态的改变。所以，我们需要保存状态，实际上就是保存某些变量。
+
+重写一个方法，系统在完成状态转换之前(onPause, onStop, onDestroy)会首先调用这个方法，保存状态。状态保存在一个`Bundle`类型的变量里，这个变量类似于一个字典，我们可以以键值对的形式向其中存入变量。
+
+~~~kotlin
+var num_key: String = "key"
+//一般我们会专门为键定义一个属性，当然也可以不这样做
+
+override fun onSaveInstanceState(outState: Bundle?) {
+        super.onSaveInstanceState(outState)
+        outState?.putInt(num_key, current_num)
+    }
+//重写方法，将我们要保存的属性保存进去
+
+~~~
+
+然后在onCreate方法里面，可以从Bundle类型变量中取出即可
+
+系统会在合适的情况下为我们通过Bundle保存状态，当然也会在合适的情况下销毁保存的记录。
+
+
+
+### 多界面设计
+
+#### 创建新的activity
+
+新建activity是一个相当复杂的任务，我们需要AS的向导来帮忙，具体来说就是在java目录下，包上面右键new，然后找到`activity->Empty activity`，更名，确认，等系统完成工作即可。
+
+系统会帮我们完成所有需要完成的工作
+
+#### 启动
+
+启动新的activity实际上是操作系统完成的任务
+
+当创建新的activity之后，这样即可启动第二个activity
+
+~~~kotlin
+var i = Intent(this, Main2Activity::class.java)
+startActivity(i)
+~~~
+
+算了，今晚搞不完了这一部分，以后再继续吧
+
