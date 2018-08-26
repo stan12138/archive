@@ -770,3 +770,86 @@ def send_email(ip) :
 我在做一个低级版本的文件传输工具，也就是纯命令行的，然后，按照计划，两个客户端这件事可以双向选择的，他们都在等待用户输入通信的伙伴，然后，如果其中一方已经主动选择了，那么对方应该退出选择界面。于是这里产生了问题，选择是运行在一个线程中的，并且是一个input操作，毫无疑问，我们不能或者绝对不应该强制关闭掉一个线程，所以说线程的退出应该是主动的，建议通过轮询实现，可是如果万一线程中包含了阻塞式操作，那就尴尬了，这时我们要求这个阻塞操作应该是可以设置timeout的，否则就彻底完蛋了，但是，尴尬的是input没有超时。虽然可以通过signal等工具实现类似的超时，但是signal的处理函数只能用在主线程中。靠！
 
 欸，稍等，也许我可以将input放入主线程。。。。
+
+
+
+
+
+### Timeout
+
+找到一种技术，可以给任意函数加装一个timeout的装饰器
+
+现在我知道的可以供使用的技术有两种，分别是借助singnal模块的alarm，另一个就是借助threading的Timer。
+
+其中，前者只在Unix平台可用，并且只能在主线程中可用
+
+~~~python
+import signal
+import time
+
+class Stop(Exception) :
+	pass
+
+def work() :
+	try :
+		for i in range(5) :
+			print(i)
+			time.sleep(10)
+	except Exception as er :
+		print("stop", er)
+
+
+def work_done(signal_num, frame) :
+	raise Stop
+
+
+signal.signal(signal.SIGALRM, work_done)
+signal.alarm(20)
+work()
+~~~
+
+这是一个实例，系统会自动计时，当设置的时间到时，就会向主线程调用handler函数，同时传入两个参数，分别是信号数目和当前堆栈frame。。。我也不清楚这是啥。
+
+然后技巧上，利用这个信号自动终止在运行的函数的技巧就是异常，这是一个很通用的技巧，当我们想终止正在运行的函数的时，异常是一个合理的方法。
+
+只需要将这个技巧包装成装饰器就可以了，但是，还是那句话，限制条件要记清楚，Unix和主线程
+
+
+
+呃，刚才研究了一下timer，发现似乎很是鸡肋
+
+~~~python
+import threading
+import time
+
+def work() :
+    for i in range(5) :
+        print(i)
+        time.sleep(5)
+        
+def handler() :
+    print("time up")
+    
+ti = threading.Timer(10, handler)
+ti.start()
+work()
+~~~
+
+timer不阻塞，当时间到的时候，会自动调用handler，似乎一切都很完美，但是，可以看一下timer的实现方式。
+
+大概上，他的逻辑是首先实现一个子线程，然后让这个线程sleep设置的timer的时间，然后调用传入的handler。
+
+所以，就可以看出来，raise方法将无法使用，因为timer自己处在一个子线程中，其他线程将无法再接收这个线程发送的Exception
+
+
+
+当然也有一些其它的，变形的使用threading实现的为普通函数提供timeout的方法，但是它们的一个普遍的缺点是将开启一个关不掉的线程，直至程序结束，这就造成了资源的浪费。
+
+详细的我没有看，总而言之，结论就是，在python里面，没有一个全平台的，特别通用，特别完美的为普通函数实现timeout的方法
+
+网上的一些实现使用了多线程的join方法来实现普通函数的timeout装饰器，但是由于无法杀死线程，所以当函数运行超时的时候，实际上他还是在后台运行，所以这种方法不太好。
+
+为了解决这个问题，网上其它人给出了使用多进程的版本，因为进程是可以杀死的，但是多进程也是有不少限制的，所以。
+
+并且，似乎对于线程，我们也无法设置timeout，并且没有好的方法实现。
+
