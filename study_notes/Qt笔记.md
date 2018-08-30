@@ -216,6 +216,37 @@ void Window::paintEvent(QPaintEvent *)
 
 这些就是今天的工作，明天继续。
 
+主界面半透明，同时圆角：
+
+~~~cpp
+void Window::paintEvent(QPaintEvent *)
+{
+    QPainter painter(this);
+    painter.setRenderHint(QPainter::Antialiasing);
+    painter.setBrush(QBrush(QColor(240,240,240,240)));
+    painter.setPen(Qt::transparent);
+    QRect rect1 = rect();
+    rect1.setWidth(rect1.width()-1);
+    rect1.setHeight(rect1.height()-1);
+    painter.drawRoundedRect(rect1, 6, 6);
+    //painter.fillRect(rect1, QColor(240,240,240,240));
+}
+~~~
+
+主界面加背景图片，需要drawpixmap，然后要同时圆角的话，需要更复杂的做法。至于内部的部件的背景设置直接使用css即可
+
+~~~css
+QListWidget {
+    background-color: rgba(255,255,255,0);
+    background-image: url(./rain1.jpg);
+    outline:0;
+    border: none;
+    border-radius: 5px;
+}
+~~~
+
+注意这里是使用了特殊的文件系统，查看下面的笔记。
+
 
 
 ### 计划
@@ -656,11 +687,57 @@ style()->drawPrimitive (QStyle::PE_Widget, &opt, &p, this);
 
 #### 信号与槽的说明
 
-我的确曾经做过专门的研究，可是却忘记记下了笔记，应该说，我所学习到的，包括自定义等，我都有在写的画板中应用过，所以，可以从里面得到一些信息。
+这一部分可以作为参考的资料是第三版的Qt Creator快速入门第三版的第七章。
 
-可能会常见到两种connect时候的信号和槽的写法，一种是引用形式，一种是用SLOT()这样的包装，二者是由固定的搭配和写法限制的，具体是怎样却已经忘记了，我所使用的参考书也不知道被我搞到哪里去了。只是，我可以确定的是，引用形式是Qt5新语法，而后者则是4中的旧形式
+普通情况下，直接connect即可，例如：
 
-嗯，我找到了，
+`connect(ui->option, &QPushButton::clicked, this, &Window::show_config_page);`
+
+这里面的`show_config_page`只是一个普通的无参数方法而已
+
+接下来，我们将可以自定义信号和槽。
+
+自定义信号：
+
+~~~h
+signals:
+    void set_ip_handler_info(QString ip, QString id, int port, int my_port);
+    void make_ip_server_off_line();
+
+    void set_server_info(int port);
+    void make_server_off_line();
+    void send_data(QString data, QString content_type);
+    void set_send_delay(int delay);
+
+    void set_client_info(QString ip, int port);
+    void make_client_off_line();
+~~~
+
+自定义槽：
+
+~~~h
+public slots:
+    void start();
+    void set_info(int port);
+    void set_delay(int delay);
+    void off_line();
+
+    void send_data(QString data, QString content_type);
+~~~
+
+然后连接`connect(this, &Window::set_server_info, server, &Server::set_info);`
+
+只要它们的参数类型一致即可。
+
+激发信号`emit set_server_info(63834);`
+
+基本上这样就够用了
+
+
+
+
+
+
 
 
 
@@ -707,6 +784,53 @@ style()->drawPrimitive (QStyle::PE_Widget, &opt, &p, this);
 
 
 ### 多界面设计
+
+这一块，我想解决的问题是，如果应用中存在着界面切换，那么应该怎么进行设计。
+
+明显，合理的方式是每一个界面都应该使用一个单独的ui文件负责设计。所以，需要解决的问题是第一如何使用多个ui文件，第二如何在界面之间切换。
+
+我当前所使用的结构是：存在一个主界面框架，他负责显示各种最小化最大化，关闭等各个界面通用的按钮，然后在这个界面的一个位置存在另外一个界面，各个界面的切换实际上切换的就是这个子界面。
+
+在项目上右键添加新文件，选择Qt设计师界面类，一般选择继承自Widget，然后修改类名即可。最终将生成一个头文件，一个cpp文件，一个ui文件。
+
+然后在主界面里面，声明一个QStackedWidget，这是一个栈，或者说是一个数组，生成上述界面类的实例，然后把这些实例放入堆栈，然后把这个堆栈放在主界面上，使用堆栈的设置当前索引来完成界面的切换，部分代码如下：
+
+~~~h
+    QStackedWidget *stack;   //界面的切换由这个堆提供服务
+
+    Options *option_page = new Options(this);   //四个不同的界面，分别是设置，关于，设备选择，通信
+    Info *info_page = new Info(this);
+    Devices *devices_page = new Devices(this);
+    Communicate *talk_page = new Communicate(this);
+~~~
+
+~~~cpp
+    stack = new QStackedWidget(this);
+
+    stack->addWidget(option_page);   //页面0, 设置页面
+    stack->addWidget(info_page);     //页面1, 关于页面
+    stack->addWidget(devices_page);  //页面2, 设备列表页面
+    stack->addWidget(talk_page);     //页面3, 通讯页面
+    stack->resize(430,440);
+
+    Layout *lay = new Layout;
+    lay->addWidget(ui->option, 1);
+    lay->addWidget(ui->about, 1);
+    lay->addWidget(ui->min, 2);
+    lay->addWidget(ui->close, 2);
+    lay->addWidget(stack, 3);
+
+    this->setLayout(lay);
+
+void Window::show_about_page()   //切换界面的例子
+{
+    stack->setCurrentIndex(1);
+}
+~~~
+
+
+
+> 下面的一部分废弃，没有用
 
 当项目当中具有多个ui文件的时候，我们应该如何引用这些ui文件？
 
@@ -759,5 +883,119 @@ View::~View()
 
 
 
-### 多窗口设计
+### 文件系统
+
+当引用资源的时候，常用的方法是加入资源文件，然后使用`:/style/style.css`这样的路径进行引用，这种方式的特点是编译之后是看不到单独的css文件的，如果的确需要得到单独的文件，那么应该使用相对路径。
+
+例如，应用使用了配置文件，对设置进行配置，然后发行的应用也需要可以看到这个单独的配置文件，并且可以通过直接修改这个配置文件对设置进行修改。那么配置文件的路径应该是这样的`./config.ini`，基本上编译完了之后，如果一切正常，应该是看不到配置生效的，因为在编译完的文件夹中没有这个文件，此时需要在编译完成的文件的exe所在文件夹的上一层文件夹加入这个文件，应该就能生效。然后发行的时候，应该放在exe文件的同一层。
+
+差不多就是这个解决思路。
+
+时间太久了，细节我已经记不太清楚了。
+
+
+
+### 列表
+
+当需要显示一些列表结构的时候，可以使用`QListWidget`
+
+然后可以在上面添加列表项，例如：
+
+~~~cpp
+    ui->List->addItem(new QListWidgetItem("Stan"));
+    ui->List->addItem(new QListWidgetItem("Stan"));
+    ui->List->addItem(new QListWidgetItem("哈哈\n额呵呵"));
+~~~
+
+自然，也需要进行美化，方法还是使用css
+
+~~~css
+QListWidget {
+    background-color: rgba(255,255,255,0);
+    background-image: url(./rain1.jpg);
+    outline:0;
+    border: none;
+    border-radius: 5px;
+}
+QListWidget::item{
+    background-color:rgba(255,255,255,200);
+    margin-bottom: 5px;
+    padding:10px;
+    border-radius:5px;
+}
+
+QListWidget::item:selected {
+    border-left: 3px solid #f00;
+    border-top:none;
+    border-right:none;
+    border-bottom:none;
+    background: #0f0;
+}
+
+QListWidget::item:selected:active {
+    background: #0f0;
+    border-left: 3px solid #f00;
+    border-top:none;
+    border-right:none;
+    border-bottom:none;
+}
+~~~
+
+上面的css示例是很混乱的，很多东西都是没用的，重要的是，第一outline属性，如果不加这个属性的设置当点击某个项目的时候，会出现一个虚线边框，并且使用border属性也去除不掉，所以这个很重要。另外就是怎么引用表项，方法就是`::item`，另外还有各种伪选择器，也应该注意一下。
+
+
+
+普通的item就是文字而已，如果想增加选择框之类的东西，实际上我们应该直接换一个部件，例如checkbox，他就可以自带选择框和字符串。使用方法如下：
+
+~~~cpp
+    QListWidgetItem *it;
+    it = new QListWidgetItem(ui->List);
+    QCheckBox *b;
+    b = new QCheckBox("stan");
+    b->setObjectName("Check");
+    ui->List->setItemWidget(it, b);
+~~~
+
+我特意设置了objectname，这样就可以利用css对checkbox进行样式修正了。
+
+这是checkbox的样式：
+
+~~~css
+QCheckBox {
+	spacing: 5px;  # 在这里我们也可以设置复选的文本样式
+    font-family: "Microsoft YaHei UI";
+    font-size: 9;
+}
+
+QCheckBox::indicator {
+	width: 15px;
+	height: 15px;
+}
+
+QCheckBox::indicator:unchecked {
+	image: url(:/buttonbg/checkbox_normal);
+}
+
+QCheckBox::indicator:unchecked:disabled {
+	image: url(:/buttonbg/checkbox_disable);
+}
+
+QCheckBox::indicator:unchecked:hover {
+	image: url(:/buttonbg/checkbox_hover);
+}
+
+QCheckBox::indicator:checked {
+	image: url(:/buttonbg/checkbox_down);
+}
+
+QCheckBox::indicator:indeterminate {
+	image: url(:/buttonbg/checkbox_indeterminate);
+}
+~~~
+
+要注意的是，前面的选择框叫做indicator，如果想要修改它的长宽，直接使用width和height是无效的。必须自己定义图片，实在很麻烦，但是没办法。
+
+[这是一个参考](https://cloud.tencent.com/developer/article/1022909)
+
+[另一个参考](http://www.cnblogs.com/csuftzzk/p/qss_radiobutton_checkbox.html#)
 
