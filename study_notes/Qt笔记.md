@@ -999,3 +999,187 @@ QCheckBox::indicator:indeterminate {
 
 [另一个参考](http://www.cnblogs.com/csuftzzk/p/qss_radiobutton_checkbox.html#)
 
+
+
+
+
+
+
+
+
+
+
+
+
+## Quick
+
+从现在起，我开始学习Qt Quick技术，据说这个开发起来会快一些？应该吧。
+
+毕竟我的Qt学习都是为了满足自己的使用，所以，迅捷就很重要，我想要能够尽快的搞定。原本的每次都要搞无边框，动作定义，自定义布局等等，好费劲。但愿Quick会像它的名字一样。
+
+
+
+现阶段的参考书是[QML Book中文版](https://github.com/cwc1987/QmlBook-In-Chinese)，感谢翻译者
+
+### 初步认识
+
+据说是这样的：Qt Quick技术下前后端分离，前端提供界面，使用QML这种新的标记语言制作界面，后端依旧是C++，所以这就是大概的结构框架了吧。
+
+
+
+### QML快速入门
+
+当初步学习QML的时候，也许不使用Qt Creator更好，因为他们会涉及一些其他的东西，也会有一些限制，尤其是在啥都不懂的情况下。此时，有一个工具可以使用。如果正常，那么安装了Qt Creator之后应该已经把路径加入环境变量了，在Qt的安装路径下的bin文件夹中有一个工具叫做`qmlscene.exe`，既然加入环境变量了，我们自然可以在任意位置的powershell下面调用`qmlscene`命令。
+
+然后，我们可以构建一个`.qml`文件，然后使用`qmlscene name.qml`即可运行，很爽，很完美。
+
+这里给出一个示例：
+
+~~~QM
+import QtQuick 2.0
+
+Rectangle {
+
+	id: root
+
+	width: 120; height: 240
+
+	color: "#D8D8D8"
+
+	Image {
+		id: wallpaper
+
+		x: 10; y: 10
+
+		source: "images/wall.png"
+	}
+
+	Text{
+
+		y: 40
+
+		width: root.width
+
+		horizontalAlignment: Text.AlignHCenter
+
+		text: "Stan"
+	}
+}
+~~~
+
+想简单一点可以直接把`Image`删掉，想使用图片的话，直接在这个文件的目录下按照`source`指定的路径放置图片即可加载。
+
+
+
+#### 开始
+
+这些东西其实是在是很简单，所以那些明显的什么`name:value`这样的结构，什么根元素子元素嵌套，语句结尾的分号什么的就不多说了，从上面的例子里面应该就能直接看出来。所以，下面只说一些有必要说明的。
+
+每一个元素都可以使用id进行引用，所以如果不指定索引就会比较麻烦，但是特别的可以使用parent来访问父对象
+
+然后定位上，还是使用左上原点的经典屏幕坐标系，子元素的坐标总是相对于父元素的，这一点很重要。
+
+#### 属性
+
+呃，我老是很没条理，所以，还是按照书上来，有条理一点吧。
+
+- 属性绑定：这个似乎很厉害的样子，例如，如果设置了`height: 2*width`，那么二者就达成了属性绑定，会自动更新的。但是事实上我对宽高的绑定测试并不成功，大概是因为这一对属性比较特别吧，可能其他的就可以了
+- 自定义属性：自定义属性要加上`property`修饰符
+- 默认属性：`default`修饰符
+- 属性转发： `alias`修饰符
+- 自动类型转换：text属性需要字符串的值，但是字符串可以和整型相加，实现自动类型转换
+- 结构化属性：有些属性是有结构化的复杂形式的，例如font自身还包含了family和pixelSize等，可以使用`font.family: "Ubuntu"`这样的形式来设置
+- 信号处理也是属性的方式
+
+输出， 这个很有用， `console.log("height: ", heigth)`这样子的，例如：
+
+`onHeightChanged: console.log("height: ", height)`这个可以捕捉高度改变的信号，然后输出新的高度值
+
+#### 脚本
+
+可以使用脚本的哦，javascript脚本，很强，可以使用函数，还可以监控键盘等。
+
+
+
+#### 基本元素
+
+元素可以划分为可视化与非可视化，可视化元素中的几个比较基础的是：Item(基本元素对象),Rectangle(矩形框),Text,Image,MouseArea
+
+
+
+### 题外话
+
+我似乎并没有非常多的耐心继续下去，之前的c++配合ui设计的方法确实会比较麻烦，对于部件的掌控似乎没有十分自由，但是QML的确会感觉自由了很多，但是，要重新来一遍，真的好麻烦的样子。
+
+我最在意的还是窗口外观，如果新建一个Qt Quick项目，默认的根元素就是Window，加载过程使用了`QQmlApplicationEngine`这个引擎，这个引擎要求根元素必须是`Window`或者`ApplicationWindow`，如果要使用Rectangle作为根元素，就必须更改加载引擎，详情见[这个回答](https://stackoverflow.com/questions/32392070/rectangle-as-a-root-element-in-qml)
+
+我其实想说什么，窗口的美化依旧不能通过直接设置什么颜色来实现，这终究还是窗口的一些特殊设置，根元素一般还是要选择`Window`，然后：
+
+~~~QML
+import QtQuick 2.6
+import QtQuick.Window 2.2
+
+Window {
+    visible: true
+    width: 640
+    height: 480
+    //title: qsTr("Hello World")
+
+    //flags:Qt.FramelessWindowHint
+    //modality: Qt.WindowModal;
+
+    flags: Qt.Window | Qt.FramelessWindowHint //| Qt.WindowSystemMenuHint
+
+    color: "#55ff0000"
+
+    MouseArea {
+        anchors.fill: parent
+        onClicked: {
+            console.log(qsTr('Clicked on background. Text: "' + textEdit.text + '"'))
+        }
+    }
+
+    TextEdit {
+        id: textEdit
+        text: qsTr("Enter some text...")
+        verticalAlignment: Text.AlignVCenter
+        anchors.top: parent.top
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.topMargin: 20
+        Rectangle {
+            anchors.fill: parent
+            anchors.margins: -10
+            color: "transparent"
+            border.width: 1
+        }
+    }
+}
+
+~~~
+
+注意上面大概有这么几个设置比较重要，模态：模态指的是当模态的对话框未被关闭之前，用户不能与同一应用程序的其他对话框交流，就像是ios上面的弹窗的感觉。
+
+然后是flages，可以去看文档，flages应该是一个四个字节的二进制数值，一般用十六进制表示，不同的位用来设置窗口的不同表现，例如无边框，但是如果单独设置了无边框，那么实际意味着其它位就是0，其中就包含了任务栏小部件，这就意味着这个程序不会以小部件的形式出现在任务栏，当无边框，又没设置退出按钮的时候，这会很麻烦，所以上面设置了一下小部件。另外，颜色的透明是有用的，但是应该并不存在圆角设置，所以，它们一般使用覆盖圆角矩形的设置。
+
+但是当要使用背景图片的时候，图片还是不能正确的显现圆角，必须加遮罩。[圆角解决方法](https://stackoverflow.com/questions/6090740/image-rounded-corners-in-qml)
+
+#### QML文件路径
+
+在qml文件中，设置资源的路径，例如Image的source，和Qt里面的c++的文件路径处理方式不一样。这里面有三种方式：
+
+~~~qml
+Image {
+    source: "./images/wall.png"
+}
+
+Image {
+    source: "file:.wall.png"
+}
+
+Image {
+    source: "file:///D:wall.png"
+}
+~~~
+
+这里面，第一种是默认的资源文件的路径，第二种是相对路径，第三种是绝对文件路径。如果不想资源被自动编译进入二进制包，应该使用后两者。
+
