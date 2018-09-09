@@ -1130,7 +1130,7 @@ Window {
 
     flags: Qt.Window | Qt.FramelessWindowHint //| Qt.WindowSystemMenuHint
 
-    color: "#55ff0000"
+    color: Qt.rgba(1,1,1,0)
 
     MouseArea {
         anchors.fill: parent
@@ -1163,6 +1163,229 @@ Window {
 
 但是当要使用背景图片的时候，图片还是不能正确的显现圆角，必须加遮罩。[圆角解决方法](https://stackoverflow.com/questions/6090740/image-rounded-corners-in-qml)
 
+
+
+#### 我在关心什么
+
+无论使用原本的C++设计模式，还是现在的Qt Quick设计模式，我关注的第一件事就是窗口的美化，如果窗口无法美化到我想要的地步，那么我将止步不前，无法说服自己去做其他的事情。
+
+我的要求其实很简单：
+
+- 无边框
+- 圆角
+- 透明化
+
+无边框是必须的，我无法忍受Windows默认的丑陋边框。圆角也是必须的，透明化也一样，但是这并不意味着我最后写的程序一定是极其透明的(往往只会稍微带一点透明)。
+
+但是，这个一般都会带来一些额外的要求：
+
+- 自定义窗口拖拽
+- 自定义窗口缩放
+- 自定义关闭等必要按钮
+
+前面的笔记中以经记录了我在C++中为了达到以上效果的做法。
+
+当我转向QML时，我也必须做到这些。其实，我并不打算让自己在Qt上面有多高的造诣，只是写着玩一玩而已，但是我也希望我的模式足够先进，不要用一些已经被遗弃的设计模式，我想努力做到这一点，当然现在还差得远。So，据说QML是未来，毕竟Qt的宣传片里面基本都是它，我会努力的使用QML，至于完整的Qt Quick这种方式，我还没有决定，因为我似乎不太想大量使用JS。所以我期待的方法是QML配合C++来完成，如果是这样的话，又涉及到另外一个选择：是用C++扩展QML还是反过来，我倾向于后者，也就是说使用QML设计界面以及一些简单的动作，后台与显示则由C++接手，换句话说，相当于把整个界面当作一个自定义的复杂部件，由C++负责控制及呈现这个界面。但是，现在的问题是，我并不太会。
+
+总而言之，在现在这个阶段，我必须努力用QML完成所有设计，也许这也算是Qt Quick吧。
+
+话说回来，如何使用QML完成上述基础任务：
+
+无边框实际上上例已经实现现了，就不做赘述。
+
+至于透明化，期待中是有一种极其简单的方式的，实际上确实有，很开心。只需要将Window根元素的颜色设置为transparent即可，如：`color: "transparent"`
+
+另外要注意Window元素还有一个属性叫做`opacity`，这个属性的功能是透明化，效果是让Window及位于其上的所有元素都透明，所以这个属性没啥用。
+
+接下来的策略是，主窗口完全透明，之后会在其上绘制一个`Rectangle`作为主窗口背景，至于它的颜色，透明度，以及圆角就随意设置了，非常自由化。
+
+接下来，会设置一系列的`MouseArea`分别负责窗口的拖动和缩放，以及关闭窗口。
+
+至于这些MouseArea的设置，自然也有不少技巧，出于友好的考虑，如果界面中不存在其它可能需要拖动的区域的话，那么负责拖动的MA应该覆盖除了缩放之外的全部区域，然后界面的缩放，传统上也要被分割为三个区域，右侧边缘负责横向缩放，下方边缘负责纵向缩放，右下角负责整体缩放。但是，明显，当界面中也有拖动元素操作的时候就要把拖动操作的区域设置为顶部边缘的某些区域了。
+
+同时处于友好考虑，还要设置光标的形状，自然是鼠标处于特定区域，并且按下左键时会改变鼠标形状。要注意的是，鼠标形状的设置并不是在MA的onPressed事件的处理中设定的，而应该直接通过MA的属性设置，而事件只负责标志位，否则无效，总之，看代码吧：
+
+~~~QML
+import QtQuick 2.6
+import QtQuick.Window 2.2
+
+Window
+{
+    visible: true
+    width: 640
+    height: 480
+    x: 200
+    y: 200
+    id: root
+
+    property int resize_event_size: 15
+
+    flags: Qt.Window | Qt.FramelessWindowHint //| Qt.WindowSystemMenuHint
+
+    color: "transparent"
+
+    //opacity: 1
+
+    Rectangle
+    {
+        id: rect1
+        width: root.width
+        height: root.height
+        color: "#00ff0000"
+        radius: 10
+    }
+
+
+
+    MouseArea
+    {
+        id: move_window
+        width: root.width-resize_event_size
+        height: 2*resize_event_size
+        anchors.top: rect1.top
+        anchors.left: rect1.left
+        propagateComposedEvents: true
+        z: 1
+
+        property bool press_already: false
+        property int mx: 0
+        property int my: 0
+        onPressed: {
+            //console.log(mouseX)
+            mx=mouseX
+            my=mouseY
+            press_already=true
+        }
+        onPositionChanged: {
+            //console.log(mouseX)
+            root.x+=mouseX-mx
+            root.y+=mouseY-my
+        }
+        onReleased: {
+            press_already=false
+        }
+
+        cursorShape: press_already? Qt.SizeAllCursor:Qt.ArrowCursor
+
+    }
+
+    MouseArea
+    {
+        id: zoom_width
+        width: resize_event_size
+        height: root.height-resize_event_size
+        anchors.right: rect1.right
+        anchors.top: rect1.top
+        property int mx: 0
+        property int my: 0
+        onPressed: {
+            //console.log(mouseX)
+            mx=mouseX
+            console.log("ok1")
+        }
+        onPositionChanged: {
+            //console.log(mouseX)
+            root.width+=mouseX-mx
+        }
+
+        cursorShape: Qt.SizeHorCursor
+    }
+    MouseArea
+    {
+        id: zoom_height
+        width: root.width-resize_event_size
+        height: resize_event_size
+        anchors.left: rect1.left
+        anchors.bottom: rect1.bottom
+        property int mx: 0
+        property int my: 0
+        onPressed: {
+            //console.log(mouseX)
+            my=mouseY
+            console.log("ok2")
+        }
+        onPositionChanged: {
+            root.height+=mouseY-my
+        }
+        cursorShape: Qt.SizeVerCursor
+    }
+
+    MouseArea
+    {
+        id: zoom_both
+        width: resize_event_size
+        height: resize_event_size
+        anchors.right: rect1.right
+        anchors.bottom: rect1.bottom
+        property int mx: 0
+        property int my: 0
+        onPressed: {
+            //console.log(mouseX)
+            mx=mouseX
+            my=mouseY
+            console.log("ok3")
+        }
+        onPositionChanged: {
+            //console.log(mouseX)
+            root.width+=mouseX-mx
+            root.height+=mouseY-my
+        }
+        cursorShape: Qt.SizeFDiagCursor
+    }
+
+
+
+    Rectangle
+    {
+        width: 30
+        height: 30
+        color: "#aa0000"
+        radius: 3
+        anchors.right: rect1.right
+        anchors.rightMargin: 15
+        anchors.top: rect1.top
+        anchors.topMargin: 15
+
+        MouseArea
+        {
+            hoverEnabled: true
+            anchors.fill: parent
+            onClicked: {
+                Qt.quit();
+            }
+            onEntered: parent.color="#ff0000"
+            onExited: parent.color="#aa0000"
+            z: 10
+            cursorShape: Qt.ArrowCursor
+
+        }
+
+        Text
+        {
+            text: "❌"
+            anchors.verticalCenter: parent.verticalCenter
+            anchors.horizontalCenter: parent.horizontalCenter
+            font.family: "Microsoft YaHei Ui"
+            font.pixelSize: 20
+        }
+    }
+
+}
+
+~~~
+
+上述代码里面的rect1就是作为主窗口背景的，同时也是基准元素，因为这里我使用了不少的anchors来进行元素的定位，而Window是不能作为它们的基准的，至少我在尝试中发现并不可行。
+
+上面我使用
+
+另外要注意的是，上面可能没有特别体现出来，一种可能碰到的情况就是MA的相互覆盖，这种情况的处理方式类似于上面的move_window的MA的`propagateComposedEvents: true`属性，大概原理就是声明事件可以继续向下传递，具体的等我再细致的试验一下，回头再来说。
+
+
+
+
+
+
+
 #### QML文件路径
 
 在qml文件中，设置资源的路径，例如Image的source，和Qt里面的c++的文件路径处理方式不一样。这里面有三种方式：
@@ -1183,3 +1406,26 @@ Image {
 
 这里面，第一种是默认的资源文件的路径，第二种是相对路径，第三种是绝对文件路径。如果不想资源被自动编译进入二进制包，应该使用后两者。
 
+
+
+### 游戏与动画
+
+近期的小目标是现简单的游戏。
+
+实现游戏的第一要素是事件循环，以PyGame为例，它会提供给我们一个事件循环，在循环内部我们可以实现物体的持续动画，同时手动做事件的检测。
+
+绝大多数游戏中都存在着可以脱离用户的操作而自行持续运动的物体，为了实现这个效果，必须要实现一个事件的循环。
+
+现在看来，Qt里面的实现方式与PyGame并不相同，它并不会直接暴露给我们一个事件循环(但是也许可以使用多线程自己做一个呢？没试)，它的实现策略是Timer，可以设置一个定时器，定时器可以设定时间，然后时间耗尽就会触发事件，可以执行动作，定时器会自动的循环执行，于是最终实现的效果是每隔特定时间，物体就会执行一系列的任务，可以将这些任务设置为自动移动等等，即可。
+
+呃，稍等，网上查到的资料在说，实际上如果用Timer来做实现的话，其实是这样的，同时设置多个Timer，然后如果某一个的timeout事件处理时间太长的话，错过的其它Timer的事件，会直接导致其他的被忽略。
+
+所以，我其实在犹豫，我无法确定执行的事件以后会不会很复杂，这样的话是不是多线程也许会更好？
+
+哦，等等，多线程我是不是已经使用过了？在文件传输的客户端里面？
+
+
+
+### 着色器与OpenGL
+
+另外一个可能比较有意思的话题就是通过着色器来设置图片的效果，以及初等的OpenGL了。等有空了，可以玩玩看。
