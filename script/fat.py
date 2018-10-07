@@ -14,6 +14,10 @@ class FAT12 :
 	文件属性都是归档文件
 	文件都会被放在根目录
 	文件没有时间戳和日期
+
+	写入文件时，会自动检查是否存在重名，如果有重名，会删除旧文件，写入新文件
+
+	本工具只是功能实现，没有做任何的优化，所以。。。。。。
 	"""
 	def __init__(self, filename="a.img", length=1474560):
 		self.filename = filename
@@ -62,7 +66,7 @@ class FAT12 :
 		"""
 		file_info = self.parse_dir()
 		fat_list = self.parse_fat()
-
+		#print(file_info)
 		all_info = []
 
 		for one_file in file_info :
@@ -90,12 +94,42 @@ class FAT12 :
 		print("left %s data sectors can use"%(2847-use))
 		print("left %s bytes can use"%((2847-use)*512))
 
+	def delete(self, filename) :
+		info = self.parse_dir()
+		file_dir_order = -1
+		file_first_fat = -1
+		find = False
+
+		for one_file in info :
+			if filename.upper()==one_file[0] :
+				find = True
+				file_dir_order = one_file[-1]
+				file_first_fat = one_file[1]
+				break
+		if find :
+			dir_begin = (self.mbr_num+self.fat1_num+self.fat2_num)*512 + 32*file_dir_order
+			dir_end = dir_begin+32
+			with open(self.filename, "rb") as fi :
+				content = fi.read()
+			new_content = content[:dir_begin]+self.zero*32+content[dir_end:]
+			with open(self.filename, "wb") as fi :
+				fi.write(new_content)
+
+			fat_list = self.parse_fat()
+			while file_first_fat<=0xfef and file_first_fat>0x1 :
+				f1 = fat_list[file_first_fat]
+				fat_list[file_first_fat] = 0
+				file_first_fat = f1
+			self.write_fat(fat_list)
+
 
 
 	def add(self, file) :
 		"""
 		向光盘映像中加入一个文件
+		如果光盘映像中存在同名文件，就会被删除，然后添加
 		"""
+		self.delete(file)
 		with open(file, 'rb') as fi :
 			file_content = fi.read()    #文件内容
 			
@@ -250,7 +284,7 @@ class FAT12 :
 				first_sector = int.from_bytes(dir_content[(32*i+26):(32*i+28)],byteorder="little")
 				#print(dir_content[(32*i+28):32*i])
 				file_length = int.from_bytes(dir_content[(32*i+28):32*(i+1)], byteorder="little")
-				one_info = [name.decode("ascii")+"."+suffix.decode("ascii"), first_sector, file_length]
+				one_info = [name.decode("ascii")+"."+suffix.decode("ascii"), first_sector, file_length, i]
 				file_info.append(one_info)
 		return file_info
 
