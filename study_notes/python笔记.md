@@ -1218,3 +1218,104 @@ def main() :
 
 然后祭出gevent，这个库是一个网络并发库，基于greenlet，它重新构建了那些socket这种东西，把它改造成了可以在阻塞时完成切换的。
 
+
+
+### 分布式
+
+唉，这一次我已经基本把简单的加速技术都用上了，多进程，C，但是计算速度依旧很慢。所以，要不要来试试分布式。
+
+首先，我计划从最简单的开始，`multiprocessing.managers.BaseManager`，之后也许会尝试一些其他的，例如`celery`
+
+现在我其实还没有取得多少进展。我有一个很疑惑的问题：在不同的机器之间传输的数据应该是什么呢？假设我们有一个计算任务，就说是一个函数吧，那么肯定有两种方式，第一，每一个worker都非常简单，从Manager接受函数形式的任务，然后运行，将得到的结果发回给Manager。第二种方式，要执行的任务，也就是函数，每个worker都有，Manager只是负责将计算的参数发送给worker，结果的返回是一样的。
+
+我实在是不清楚，规范的做法应该是怎样的。第一种方式的好处是worker可以很简单，建立起来很方便，但是问题在于能发送函数给worker吗？如果函数很复杂呢？如果他又调用了一些Manager上面的自定义模块呢？如果不是一个函数而是一个类呢？到目前为止，我还没有能够使用BaseManager在机器之间共享函数。我压根就不知道这样是不是可行。
+
+第二种方式的好处是发送的数据结构很简单，内容也不多。并且我已经成功的使用BaseManager发送了简单的数据类型，甚至是列表和字典。但是，这样搞起来有点让我不满意呀，难道我要首先手动在各机器上放一份源代码吗？然后一旦修改了，还要重新放一份？这样的话，我还要什么BaseManager，干脆手动在每台机器上运行代码，手动分配任务，然后手动聚合结果就好了，其实也没差特别多，尤其是机器数顶多就是个位数的时候。
+
+我也不知道到底该怎么做，继续读文档和资料ing.....
+
+
+
+当我尝试使用BaseManager传输函数的时候，运行得到了报错，错误信息基本上是这样的：
+
+~~~
+  File "D:\Anaconda3\lib\multiprocessing\connection.py", line 251, in recv
+    return _ForkingPickler.loads(buf.getbuffer())
+AttributeError: Can't get attribute 'fun' on <module '__main__' from 'worker2.py'>
+~~~
+
+这似乎挺奇怪的，也就是说worker无法得到fun，这里的fun就是我定义的工作函数的名字。
+
+难道没被传输过来吗？或者说是我的用法错误。
+
+
+
+接下来考虑一个问题，假设自己写一个极简的并行计算模块，要解决的首要问题是什么？大概就是首先要有能力获取一个完整的python的object，然后通过socket传输给其他用户，它们再解包出来这个object，然后执行即可。所以问题的关键是怎么获取一个完整的object。
+
+换句话说，有没有什么办法，能够获取一个用二进制描述的任意类型的东西，这种描述方式在python之间是通用的。那么首先会想到什么？自然是pickle。
+
+做一个简单的实验，我们能否将一个函数使用pickle包装到一个文件中，然后将这个文件转移，在其他位置利用pickle解包，运行。如果可以的话那就非常完美了。
+
+如：
+
+~~~python
+import pickle
+import time
+from worker import fun
+
+def fu() :
+	print("hello, I am reborn")
+	time.sleep(2)
+	fun()
+	print("hello, I am done")
+
+
+def main():
+    print(fun)
+    with open("test.txt", "wb") as fi :
+    	pickle.dump(fu, fi)
+
+if __name__ == "__main__":
+    main()
+~~~
+
+然后在其他位置：
+
+~~~python
+import pickle
+
+with open("test.txt", "rb") as fi :
+	fun = pickle.load(fi)
+
+fun()
+~~~
+
+结果就是报错：
+
+~~~
+Traceback (most recent call last):
+  File "test.py", line 4, in <module>
+    fun = pickle.load(fi)
+AttributeError: Can't get attribute 'fu' on <module '__main__' from 'test.py'>
+~~~
+
+是不是有点眼熟。跟最上面的基本一致。
+
+
+
+这意味着，要解决的问题是是否可以利用pickle转移任意python数据？
+
+检查pickle的文档，就可以发现，可以pickle的类型是：
+
+~~~
+None, True, and False
+integers, floating point numbers, complex numbers
+strings, bytes, bytearrays
+tuples, lists, sets, and dictionaries containing only picklable objects
+functions defined at the top level of a module (using def, not lambda)
+built-in functions defined at the top level of a module
+classes that are defined at the top level of a module
+instances of such classes whose __dict__ or the result of calling __getstate__() is picklable (see section Pickling Class Instances for details).
+~~~
+
+所以，完蛋了。
