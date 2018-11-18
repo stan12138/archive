@@ -1429,3 +1429,259 @@ Image {
 ### 着色器与OpenGL
 
 另外一个可能比较有意思的话题就是通过着色器来设置图片的效果，以及初等的OpenGL了。等有空了，可以玩玩看。
+
+
+
+### MouseArea
+
+`mousearea`的重要性自不必说，在QML里面，所有的鼠标动作都需要它的参与。
+
+这里要说的是几个需要注意的地方，这些东西其实完全可以去看官方的文档，说得非常仔细，这里我只是简单的说一下。
+
+首先，很容易忽略的问题就是mousearea的anchors.fill或者是width和height。总而言之就是必须设置尺寸。如果想要可视化一下，可以在里面再嵌套一个Rectangle
+
+然后就是重叠问题，如果Mousearea相互重叠的话，必须要考虑顺序问题，首先如果两个元素在源码里面有先后出现顺序，那么必然是后出现的叠在最上面，覆盖掉下面的区域。但是似乎可以通过z来进行设置，但是注意z只对并列的元素才有意义。例如源码中A出现在B之前，可以通过设置z让A覆盖在B上面(应该是，我并没有试验过)，但是并不能通过设置z让A的子元素覆盖在B之上。
+
+总而言之，顺序很重要，要小心的根据想要的效果规划mousearea以及顺序，z其实真的不建议使用，感觉会导致混乱。
+
+然后如果真的发生了覆盖，又想让信号传递到下层，例如A覆盖在B之上，那么默认click信号是不会传递到B的，那么首先需要设置A的属性:`propagateComposedEvents: true`，这个代表这可以传递信号向下，然后还要在他的onClicked里面处理完想要处理的事务之后设置`mouse.accepted=false`以伪装自己没有处理点击信号。这样下层就会收到信号。
+
+另外需要提及的就是hover的问题，如果要处理`onEntered和onExited`信号的话，必须首先赋予这个区域接受悬浮信号的能力`hoverEnabled=true`
+
+另一个重要问题，如果两个MouseArea有重叠，那么onEntered也会出问题，即上层元素的enter不会被传递到下层元素，并且还不存在前面像click那样的方法可以自行传递，这个问题就很烦。
+
+我做了一些搜索和尝试，并没有找到十分满意的方法，现在使用的解决方法是，必须将上层元素设置为下层元素的子元素。也就是说子元素的onenter会被自动传递到父元素，当然并不要求必须是直接子元素，可以是多重的子元素也没问题。
+
+这样虽然可以做，但是有时就不得不更改代码结构。现在只能这样了。
+
+总而言之，就是这些了，规则很简单。但是事实上对于某些比较复杂的组件，情况会稍微复杂一点，后面会提及。
+
+
+
+### 组件
+
+当某些设计变得非常复杂的时候，我们需要将一部分组件拆分出来，单独写在一个`.qml`文件中，让它成为一个整体，然后引用。
+
+其实用起来非常简单，随意的一些组件组合在一起就可以。然后保存成一个`.qml`文件，他们将成为一个以文件名为名字的新组件，所以最好文件名首字母大写比较好。
+
+然后需要注意的就是接口。
+
+新组件只有根目录的属性能被外界获取和设置。所以要注意，例如：
+
+~~~QM
+Rectangle {
+    width:10
+    height:11
+    signal my_click
+    property alias mo_width: mo.width
+    MouseArea {
+    	id: mo
+        widht: 10'
+        height: width
+        onClicked: {
+            console.log("hello");
+            parent.my_click();
+        }
+    }
+}
+~~~
+
+基本上，上面就是所有的重要内容了，对于普通的属性，可以使用`property alias mo_width: mo.width`，赋予子元素的属性一个别名，这样外部就可以通过这个别名修改子元素属性了。例外根元素的width等这些属性自然就可以直接获取。
+
+另外就是信号问题，信号的处理逻辑是这样的，首先需要在根元素设置一个新的信号例如`signal my_click`，然后需要在子元素的某个事件中触发这个信号，如`parent.my_click()`，在外部可以设置如何处理这个信号，在本例上就是定义`onMy_click`信号的处理方法，这样就可以获取内部的信号了。明显一个信号对应的事件就是前面加一个`on`然后首字母变大写。
+
+组件就是这些了。
+
+
+
+### 打开新的窗口
+
+假设现在想要实现一个新的功能，即窗口靠近屏幕边缘时隐藏，同时出现一个小的图标，点击之后窗口可以再次出现。
+
+那么这个功能的设计涉及的要点如下：
+
+- 窗口的隐藏
+- 新图标
+
+重中之重就是后者，他的实现方式是，在源文件钟添加一个新的元素：
+
+~~~QML
+    Window {
+        id: hidden_area
+        height: 80
+        width: 80
+        visible: false
+        flags: Qt.Window | Qt.FramelessWindowHint
+        color: "transparent"
+        onActiveChanged: {
+            if(!active)
+            {
+                hidden_area.visible = false
+            }
+        }
+
+        Rectangle {
+            color: "#220000ff"
+            anchors.fill: parent
+            radius: hidden_area.width/2
+
+            MouseArea {
+                anchors.fill: parent
+                onClicked: {
+                    root.x = Math.max(0, root.x);
+                    root.y = Math.max(0, root.y);
+                    root.show();
+                    hidden_area.hide();
+                }
+            }
+        }
+
+
+    }
+~~~
+
+这个元素也应该是一个Window元素，那么自然也可以通过设置实现他的无边框，然后透明，同时覆盖一个新的图形，并设置一个按钮来实现点击唤出窗口。
+
+首先需要设置这个元素的`visible: false`，让它不可见。
+
+在主窗口中首先要实现位置检测，这时可以通过`Screen.width`等获取屏幕的宽高信息，然后通过和窗口的`x,y`比对，决定是否隐藏窗口。考虑一下可知，自然是鼠标首先拖动窗口到边缘，然后释放，所以在释放鼠标的事件中检测，决定是否隐藏即可。
+
+隐藏窗口只需调用窗口的hide方法即可，然后第二窗口的出现需要这样：
+
+~~~QML
+hidden_area.visible = true
+hidden_area.requestActivate();
+root.hide()
+~~~
+
+这里的hidden_area就是第二窗口的id，root是主窗口的id。
+
+我并不确定上面代码里hidden_area的`onActiveChanged`事件是不是需要。应该不用吧，其实。
+
+然后唤出主窗口只需要调用主窗口的`show`方法，同时隐藏自己即可。
+
+
+
+### TextEdit
+
+这里介绍一个新的组件，我非常喜欢。TextEdit是多行文本输入框，它的最大好处在于可以获取内容的尺寸，然后还可以通过设置实现自动换行。如下：
+
+~~~QML
+TextEdit {
+anchors.top: parent.top
+anchors.right: parent.right
+id: plan_content
+width: parent.width-35
+height: paintedHeight+10
+text: ""
+wrapMode: TextEdit.Wrap
+font.family: "Microsoft YaHei"
+font.pixelSize: 15
+}
+~~~
+
+自然首先需要锚定位置，然后如果要使用自动换行功能需要做两点，首先必须设置宽度，自然这个宽度可以和一个其他的值绑定例如窗口宽度等。然后需要设置`wrapMode: TextEdit.Wrap`，这个值有多种选择，对应不同的换行模式，具体看文档。
+
+然后就是获取内容的尺寸，这一点可以通过`paintedHeight`来获取，自然还有一个对应的宽度。于是就可以实现文本框随内容的尺寸变化。
+
+接下来还可以设置一些文本的属性这就不细说了。
+
+
+
+最后要提及的就是mousearea的问题，有些时候，必须要在textedit上面覆盖一层mousearea，例如要设置鼠标进入该区域的动作。然后自然还需要实现点击之后进入编辑功能，那么就涉及到了信号在他们之间的传递。
+
+~~~QML
+    MouseArea {
+        anchors.fill: parent
+        hoverEnabled: true
+        propagateComposedEvents: true
+        onEntered: {
+            marker.visible = true
+        }
+        onExited: {
+            marker.visible = false
+        }
+        onClicked: {
+            marker.visible = false
+            //mouse.accepted = false
+            if (!plan_content.activeFocus) {
+                plan_content.forceActiveFocus();
+                plan_content.cursorPosition = plan_content.text.length;
+            } else {
+                plan_content.focus = false;
+            }
+        }
+
+    }
+~~~
+
+这里的实现方法与之前说到的信号传递不同，我们需要做上面onClicked事件内的工作，这里的`plan_content`是TextEdit的id。所以大概这里的原理就是让TextEdit获取焦点。同时因为默认获取焦点之后光标在开头，于是需要设置光标的位置到尾部。
+
+
+
+另外，默认情况下，TextEdit是不具备鼠标功能的，指的是鼠标点击更改光标位置，选中，复制，剪切等功能的，这些都需要自己实现，我还没做。
+
+
+
+
+
+### ListView
+
+这是另外一个我非常喜欢的部件，对于它的学习其实来自于qml book，就是上面提及的参考书的mvd部分。
+
+ListView的优点在于，首先可以通过对于model的修改实现动态增删元素，然后另外它自动实现了滚动功能，只要设置了他自身的尺寸，它就会自动包含一个不可见的滚动条，然后当元素很多的时候可以通过鼠标实现滚动选择。
+
+其实，我想说的差不多就是这些了，剩下的可以直接通过看书上的讲解就好，其实蛮详细的。
+
+这里要说的最后一点就是ListView的mousearea功能，因为当使用listview的时候，自然会想要一个点击空白处添加新的项的功能，于是可以在ListView里面定义一个覆盖了parent的MouseArea，如下：
+
+~~~QML
+    Rectangle {
+        width: root.width-40
+        height: root.height-70
+        anchors.centerIn: parent
+
+        ListView {
+            anchors.fill: parent
+            anchors.margins: 10
+
+            clip: true
+            model: item_model
+            delegate: number_delegate
+
+            MouseArea {
+                z: -1
+                anchors.fill: parent
+                onClicked: {
+                    item_model.append({"number":1})
+                }
+            }
+        }
+
+
+        Component {
+            id: number_delegate
+            Plan_item {
+                width: parent.width
+                onClick_done: {
+                    item_model.remove(index);
+                }
+                onClick_delete: {
+                    item_model.remove(index);
+                }
+            }
+        }
+    }
+~~~
+
+这里的布局方式是，首先定义了一大块矩形，然后在矩形内部定义了一个ListView，ListView上面再覆盖一个MouseArea，下面再定义代理，代理里面使用了自定义组件，这个自定义组件对应ListView的一个条目，包含了几个图标和一个TextEdit，也挺复杂的。
+
+于是要实现上面的功能首先要保证MouseArea应该在自定义组件的下面，这里用到了z属性，这个必须使用，然后应该注意自定义组件不要设置向下传递信号的功能。
+
+这样有组件的地方点击就是执行组件的功能，没组件的地方点击添加组件。
+
+自然，当满了之后，就不能继续点击添加了，解决方法就是在矩形下方再定义一个小的MouseArea，实现添加功能。
+
+
+
+Ok，截止到现在，我想说的就是这些了，总而言之，最最重要的就是要厘清MouseArea的作用区域的问题。
