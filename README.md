@@ -39,13 +39,13 @@
 
 不论如何，乱七八糟，包含以下相关的知识：
 
-|    条目    |      条目      |     条目      |     条目     |     条目     |    条目     |
-| :------: | :----------: | :---------: | :--------: | :--------: | :-------: |
-|   `安卓`   |    `AVR`     | `Bootstrap` |  `Flask`   | `Markdown` |   `Git`   |
-|   `D3`   |    `HTTP`    |   `Java`    |    `js`    |  `latex`   | `logging` |
-| `matlab` | `matplotlib` |  `MongoDB`  |  `MySQL`   |  `Nginx`   |  `Numpy`  |
-| `pandas` |    `PIL`     |  `pygame`   | `pyOpenGL` | `tornado`  |   `Vim`   |
-|  `多进程`   |    `多线程`     |   `基础爬虫`    |   `树莓派`    |   `图像处理`   |  `网络编程`   |
-|   `前端`   |   `正则表达式`    |    `批处理`    |   `电子技术`   |   `C++`    | `Django`  |
-|  `PyQt`  |              |             |            |            |           |
+|   条目   |     条目     |    条目     |    条目    |    条目    |    条目    |
+| :------: | :----------: | :---------: | :--------: | :--------: | :--------: |
+|          |    `AVR`     | `Bootstrap` |  `Flask`   | `Markdown` |   `Git`    |
+|   `D3`   |    `HTTP`    |   `Java`    |    `js`    |  `latex`   | `logging`  |
+| `matlab` | `matplotlib` |             |            |            |  `Numpy`   |
+| `pandas` |    `PIL`     |  `pygame`   | `pyOpenGL` |            |   `Vim`    |
+| `多进程` |   `多线程`   | `基础爬虫`  |  `树莓派`  | `图像处理` | `网络编程` |
+|  `前端`  | `正则表达式` |  `批处理`   | `电子技术` |   `C++`    |  `Django`  |
+|  `PyQt`  |              |             |            |            |            |
 
