@@ -354,3 +354,23 @@ plt.show()
 
 you know what? I want take a break
 
+
+
+
+
+### 动画
+
+我也是刚刚开始学……….所以我想翻译一下文档先。
+
+开始
+
+使用动画最简单的方式是使用Animation的两个子类之一：
+
+~~~
+FuncAnimation      通过重复调用func来实现动画
+ArtistAnimation    使用一个固定的Artist序列来实现
+~~~
+
+##### FuncAnimation
+
+好吧，感觉上其实没有说什么，直接跟着例子来就好了。

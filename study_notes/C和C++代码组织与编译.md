@@ -206,13 +206,7 @@ g++ main.cpp -L. -lstan
 
 要搞清楚哪些属于makefile的规则处理范围，哪些不是，例如我们可以通过vpath设置文件的寻找路径，但是这个路径并不会应用到command中g++的寻找路径当中去。如果想要使用我们必须使用一些特殊的手段，例如自动化变量
 
-
-
 [这里是一个参考](https://codereview.stackexchange.com/questions/78855/makefile-for-c-opengl-with-glfw-and-glad)
-
-
-
-
 
 
 
