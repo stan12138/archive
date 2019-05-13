@@ -44,13 +44,13 @@ Visual studio是微软的IDE，很多情况下我们不得不使用他的编译�
 
 然后是系统架构，选64位，然后选操作系统接口协议，可选posix或者win32，按道理来说，似乎如果开发的是win程序，应该选win32，无论32位还是64位，但事实证明我选择posix也没有任何问题。
 
-异常处理模型，有dwarf和sjlj两种，前者性能好，
+异常处理模型，如果选择了64位系统，可用的异常处理模型有seh和sjlj，前者性能好，问题是不能再使用`-m32`实现32位编译，所以我选后者
 
+如果选择了32位模型，可选的是`dwarf和sjlj`
 
+再说回`sourceforge`，`mingw-w64`的地址是`https://sourceforge.net/projects/mingw-w64/files/`，我们应该选择`win64的toolchains`文件夹，然后进入`personal builds`里面的`mingw-builds`，接下来就是选版本，接口协议，异常处理模型。
 
-
-
-
+之后就可以通过`gcc -m32`来实现32位的编译。
 
 ### 代码组织
 
