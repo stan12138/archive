@@ -45,7 +45,7 @@ security:
 db.createUser(
     {
     user: "Stan",
-    pwd: "han112358",
+    pwd: "xxxxxxx",
     roles: [{role:"userAdminAnyDatabase",db:"admin"}]
     }
     )
