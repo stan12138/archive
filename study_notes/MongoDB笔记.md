@@ -4,32 +4,76 @@
 
 ###环境配置
 
-官网下载community的Windows Server 2008 R2 64-bit and later, with SSL support x64即可，安装，选择custom可以定制文件夹，很快就可以安装结束
+至于如何下载和安装，可以直接去看[菜鸟教程上面的指导](<https://www.runoob.com/mongodb/mongodb-window-install.html>)就可以了，说的蛮详细的。
 
-之后的过程说实话我也很模糊
+然后，可以把bin目录加入环境变量，这样的话就可以在任意位置使用mongodb的命令了。
 
-我做了很多尝试，但多以失败告终，所以我也不敢确定哪些是有用的
+接下来，就是配置和启动。
 
-大概应该是这样的:
+这么说吧，在windows下面有两种启动mongodb的方法，一种是直接运行这样的命令`mongod --auth --port 27017 --dbpath d:\db`，指定一下数据库目录什么的，注意前面的`--auth`选项制定了开启用户密码验证。
 
-1.  我们需要一个目录作为db数据的目录，可惜这个目录并不会自动创建，我们可以自己建一个data/db
-2.  cd进入mongodb的目录下的bin文件夹，然后执行`mongod --dbpath d:\data\db`，此时你应该可以看到db下出现了很多文件，并且命令行也输出了很多信息
-3.  加入环境变量，方便使用。在系统环境变量里新建一个，名字自定，如:`MONGODB_HOME`，值是mongodb的目录一直到bin的上一层，例如`D:\ProgramFile\MongoDB\Server\3.4`，然后编辑系统的path，在后面添加`%MONGODB_HOME%\bin;`，注意path的每一个值都是用；分割的，最后一个也要使用;所以万一前面一个少了;你要记得自己加上，你应该能看出来吧，MONGODB_HOME就是被当作了一个变量，然后使用%标识等等
-4.  加入windows服务，这一步我执行了，但是我在服务中并没有找到mongodb，但是至少我的确成功设置了日志文件。我们应该在data下再新建一个dbConf的文件夹，并在里面新建一个空白文件，叫mongodb.log。接下来在管理员命令行输入：`mongod.exe --bind_ip 127.0.0.1 --logpath "D:\ProgramFile\data\dbConf\mongodb.log" --logappend --dbpath "D:\ProgramFile\data\db" --port 27017 --directoryperdb --serviceName MongoDB -install`注意改一下该改的目录。他们说接下来输入services.msc就可以看到弹出来的服务中就有mongodb但是，我并未发现
-5.  我们该如何启动mongodb，打开管理员命令行，输入`net start MongoDB`，自己看一下，信息正常就说明应该是开启成功了。
-6.  我们打开一个新的命令行，注意只能在bin文件夹打开才行，输入`mongo`，应该就会连接成功，这时我们就可以在这里操作了,例如输入2+2，会给出4，例如db，一般输出test
-7.  想要关闭db，网上给了很多方法，但有些看不懂，有些不成功。我成功的就是在上面的操作界面输入`use admin`切换到管理员，然后输入`db.shutdownServer();`即可，这时使用`ctrl-c`可以退出操作界面，然后再mongo，应该会发现连接失败，说明已经退出成功了。先要开启，还要在管理员命令行界面输入net start MongoDB
-8.  怎么证明你的确是设置成功了dbpath呢？去之前设置的目录，打开日志文件，应该就能找到。
+这样的话，据我观察是需要一直开着这个powershell的，提供服务，但是这样每次都输入命令，确实很麻烦。
+
+一种变通的方式就是可以在windows上配置一个mongodb的网络服务，启动的时候开始这个服务就好了。
+
+方法呢？这种一般我比较喜欢使用配置文件进行配置。配置文件例如叫`mongodb.cfg`
+
+~~~
+systemLog:
+    destination: file
+    path: d:\log\mongod.log
+storage:
+    dbPath: d:\db
+net:
+    bindIp: 127.0.0.1
+    port: 27017
+security:
+    authorization: enabled
+~~~
+
+明显这里配置了日志目录，数据目录，端口，特别的还开启了密码认证，这样就不是所有人都能操作了。
 
 
 
-### 加密
+实际上，按照顺序，我们应该首先做的是先设置用户和密码，然后在开启密码认证，不然这样我们自己也连不上了。
 
-前面的东西写的并不绝对呀，反正当时是很懵的，就瞎写，其实现在也挺懵的，很多问题很是没搞懂，例如用户与密码设置。
+首先去掉`--auth`选项，使用`mongod --port 27017 --dbpath d:\db`开启一下。然后通过`mongo`进入交互界面。
 
-当我需要开放数据库给多个电脑的时候，设置密码势在必行。
+`use admin`
 
-首先自然是选择一个文件夹作为数据库，例如某结构下的`result`目录，然后
+~~~
+db.createUser(
+    {
+    user: "Stan",
+    pwd: "han112358",
+    roles: [{role:"userAdminAnyDatabase",db:"admin"}]
+    }
+    )
+~~~
+
+这样就创建了一个`admin`用户，使用`show users`可以查看创建了哪些用户。
+
+然后使用`exit`断开连接。同时结束开启的服务器。
+
+接下来再使用管理员powershell，执行`mongod.exe --auth --config D:\config\mongodb.cfg --install`，注意里面的配置文件的路径。
+
+经过上面的一步已经成功创建了名为`MongoDB`的服务。
+
+接下来通过`net start MongoDB`就可以开启服务，通过`net stop MongoDB`就可以关闭服务
+
+之后再通过`mongo`进入交互界面，应该会发现调用`show dbs`无法显示结果了，这就代表用户验证已经开启，需要用户名和密码了。
+
+此时可以使用`use admin`，`db.auth("name", "pwd")`登录，就欧科了。
+
+
+
+按道理来说，是不会出问题的。但是，要注意的是如果之前就用无认证的形式注册了windows服务，那么修改了config文件为认证的，无论是重新开启服务，还是重新注册服务都可能发现无法启动认证。这种情况下，需要首先删除旧的服务，然后注册新的服务。
+
+至于如何看到我们的服务，可以通过我的电脑右键管理，服务和应用程序找到。
+
+删除的话，有人给出了`sc delete MongoDB`的命令，但是测试无效，因为依旧可以找到这个服务。此时需要使用mongodb自带的命令删除才行：`mongod --remove --serviceName “MongoDB”`来实现。如果在服务里面找不到`MongoDB`了就说明成功了。
+
+至于用户的更细致的管理，再说吧。
 
 
 
