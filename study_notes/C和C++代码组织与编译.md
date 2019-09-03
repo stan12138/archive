@@ -242,3 +242,17 @@ a = main.o kde.o xxx.o
 $(a)
 ~~~
 
+
+
+
+
+### C语言模块化编程
+
+因为最近在写OS，要写不少的C，所以，我希望可以规范化我的C代码。
+
+
+
+常量的定义，使用宏定义在头文件中。
+
+[参考资料](https://www.icosaedro.it/c-modules.html)
+
