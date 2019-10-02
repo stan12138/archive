@@ -14,7 +14,7 @@
 
 我并没有自己装docker，这一块是同学给我整好的，就先跳过。
 
-欧科，其实到目前为止，我并没有搞懂安装docker是个怎么样的流程，以及为什么要这么做。似乎还有什么docker-ce和docker-ee我也并不知道是什么。
+欧科，其实到目前为止，我并没有搞懂安装docker是个怎么样的流程，以及为什么要这么做。似乎还有什么docker-ce和docker-ee我也并不知道是什么。（docker ce是社区版 docker ee是企业版），社区版就够用了
 
 但是，目前的WSL已经很不错了，我可以在上面装docker，安装的方法[参考这里](https://www.runoob.com/docker/ubuntu-docker-install.html), 防止失效，这里摘录，做个备份：
 
@@ -84,9 +84,16 @@
 
 此时如果运行`sudo docker images `大概是无法执行的，因为docker并没有在运行。
 
-执行`sudo service docker start` 即可运行docker，然后上述测试命令就可以使用了，环境布置到此完成。
+docker需要以服务的形式启动，至少在Ubuntu上面使用如下的命令可以启动或者停止docker，如果没有启动，无法执行docker的任何命令。
 
+~~~
+sudo service docker start
+sudo service docker stop
+~~~
 
+在WSL2上面，如果关闭了Ubuntu的窗口，就相当于虚拟机已经停止了，自然docker就关了，下一次必须重新开启。
+
+`sudo docker info`可以查看当前docker的基本信息。
 
 ### 基本概念
 
@@ -114,7 +121,7 @@ sudo docker restart stan #重启
 
 sudo docker exec -it stan
 sudo docker exec -it stan bash
-sudo docker attach stan
+sudo docker attach stan      
 
 sudo docker commit stan ubuntu_python3  #对stan容器现在的状态创建一个ubuntu_python3的镜像
 
@@ -196,3 +203,25 @@ SSH也提供了一个映射功能，可以把SSH目标主机上的某个端口�
 `sudo docker oldname newname`
 
 当我们执行前述命令，应该就能进入到ubuntu的交互shell，此时可以像普通shell和系统一样执行我们想要的操作，如果要退出这个shell，只需要执行`exit` 即可，但此时也就退出了这个容器，容器停止了执行
+
+### 关于容器
+
+容器和镜像是什么关系就不说了。
+
+容器首先应该创建，之后可以停止，启动，删除等。
+
+1. 容器的创建
+
+    创建一个容器应该使用`sudo docker run`命令，需要跟的参数包括了镜像和一些其他的设置，其中`-i -t`配合可以提供一个交互式界面，`--name` 负责为容器命名，`-d` 指定要创建的是一个守护式容器，`-p` 可以用来指定端口映射。常见的也就是这些参数了，另外据我推断`i, t, d`这三个参数是可以写在一起的，例如`-it`等价于`-i -t`，`-itd`等价于`-i -t -d`。
+
+    `-i`的意思是
+
+    例如：
+
+    ~~~bash
+    sudo docker run -it --name stan ubuntu               #创建一个ubuntu容器， 并且提供交互式shell
+    sudo docker run -i -t --name stan ubuntu /bin/bash   #创建一个ubuntu容器， 并且提供交互式shell
+    sudo docker run --name my_redis -p 6379:6379 -d redis  #创建redis容器，并且完成端口映射
+    ~~~
+
+2. 
