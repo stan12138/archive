@@ -1325,3 +1325,129 @@ instances of such classes whose __dict__ or the result of calling __getstate__()
 ~~~
 
 所以，完蛋了。
+
+
+
+
+
+### 元类
+
+最近在看一点别人写的代理池，学习一下别人的程序设计方法。
+
+没想到一开始就碰上了元类，所以，我必须学习一下元类了。这两天花了不少时间，但是实际都无心学习，进度很慢，今天总算有点进展了。此处做一个简单的记录。
+
+#### 什么是元类
+
+首先，需要知道(我以前已经知道了)类实际就是类型。类可以创建实例，实际上类对象本身也是某一个类的实例，这个类即`type`，我知道这有点难以想象，事实的确如此。
+
+我们知道类有两个魔术方法，`__new__`和`__init__`，后者更常见，我们会在这里面完成类实例化的时候的实例的一些初始化工作。但其实前者更重要，因为后者只是在设置实例的一些属性，而前者是真正负责创建这个实例，并返回，所以在类被实例化的过程中，首先会自动调用前者创建一个实例，然后立即调用后者为这个实例设置必要属性。这两个方法是什么时候运行的呢？明显就是在实例化的过程中。
+
+说回类对象本身其实也是`type`类的一个实例，所以参照上述过程，类对象在生成的时候自然也有一个实例化过程，那这个实例化过程应该是调用了`type`类的上述两个方法。这个过程是在什么时候执行的呢？就是在class这一行的后面。
+
+明显，我们可以通过自定义一个类的上述两个方法，拦截实例化过程，实现自定义。
+
+那么，肯定就会问，我们是否有办法拦截类对象的生成过程，因为它也是`type`类的实例化过程呀，如果拦截了我们就可以在类本身做一些包装了，至少玩些花招是可以的吧。
+
+答案是肯定的，方法就是元类，默认情况下，类对象是通过实例化`type`类实现的，通过元类，我们可以实现让它实例化我们指定的类，这样就可以通过改写我们自定义类的上述两个方法来控制类对象的生成过程，蛮合理的对吧。
+
+#### 实际操作
+
+那么实际操作是怎样的呢？我们可以通过`__new__`和`__init__`来实现控制，后者我们很熟悉，前者我其实以前从来都没用过。所以需要了解一下。
+
+呃，我不想去看普通类的`new`了(PS.typora里面打双下划线的单词实在是太麻烦了，后面用去掉下划线的代指有下划线的)。这里直接说明`type`类的`new`和`init`，它的这两个方法接收的参数如下：
+
+~~~python
+type.__new__(typeclass, classname, superclasses, attributedict)
+type.__init__(class, classname, superclasses, attributedict)
+~~~
+
+在类对象创建的过程中，会自动把这些参数收集然后交给`type`的这两个方法，所以，明显我们是无法控制哪些参数被交给了这两个方法，也就是说我们的元类必须遵循相同的接口协议，也应该接收这些参数。然后`new`会返回一个类对象，而`init`的第一个参数就是这个类对象，这个方法没有返回值。而`new`的第一个参数是当前类，对与`type`类来说就是`type`类，对于自定义元类来说就是我们的自定义元类，我觉得好像没啥用。接下来的参数看名字应该知道意思吧。特别说一下`attributedict`。
+
+我以前特别习惯于说类分为属性和方法，属性就是一些数值，方法特指类的函数。但是其实在python里面属性和方法都叫做属性。所以最后一个参数会包含这个类的所有属性和方法。
+
+那么这里又有一个细节，反正我现在已经知道了，不知道你知不知道，举个例子吧：
+
+~~~python
+class Egg :
+    data = 1
+    def __init__(self) :
+        self.name = "haha"
+    def hello(self) :
+        print("hello")
+~~~
+
+如果你学过`c++`，你应该知道所谓类方法和实例方法，在python里面也有这样的概念，`data`是什么，它叫做类属型，也就是可以通过`Egg.data`来调用，不需要实例就能调用，而`self.name`明显是实例属性，实例才能调用。那么`hello`也自然是实例方法，因为第一个参数是self，我们可以通过装饰器产生类方法，对吧，这些都不说了。
+
+总而言之，我想说的是，虽然`hello`不是类方法，但是你应该能明显看到，它和`data` 是同一层级的，这意味着什么？其实它和`data`都是类的属性。(这里我并不知道我说的对不对)。
+
+所以，我究竟想说什么，我想说的就是最后一个参数`attributedict`其实是这样的，(假设是对于前面的`Egg`来说)：
+
+~~~python
+{'__module__': '__main__', '__qualname__': 'Egg', 'data': 1, '__init__': <function Egg.__init__ at 0x7f0501cc06a8>, 'hello': <function Egg.hello at 0x7f0501cc0730>}
+~~~
+
+所以你可以看到嘛，属性就是直接属性的键值对，对于方法就是由方法的名字和这个方法组成的键值对。
+
+总之，我认为基本知识已经说完了，下面直接给出一个例子：
+
+~~~python
+class Meta(type) :
+    def __new__(meta, classname, superclasses, attributedict) :
+        print("this is Meta class, this is args I get :")
+        print(meta, classname, superclasses, attributedict)
+        
+        return type.__new__(meta, classname, superclasses, attributedict)
+   
+	def __init__(Class, classname, supers, classdict) :
+        print("this is Meta init")
+        
+class Egg(metaclass=Meta) :
+    data = 1
+    def __init__(self, a) :
+        print("this is egg", a)
+    def hello(self) :
+        print("hello")
+        
+        
+if __name__ == "__main__" :
+    print("begin instance")
+    a = Egg(1)
+    a.hello()
+~~~
+
+你会看到什么呢？在`begin instance`之前，就能看到`Meta`里面的那些输出，为什么？如前所述类对象的产生是在class语句之后就做的。
+
+然后需要看一些细节。
+
+例如元类需要继承`type`，然后`new`里面的返回值还是需要使用`type`的来产生，因为我们并不能真正接受产生过程，我们只是在产生前后做了一些封装。至于init呢，没有返回值，也可以不用做什么特别操作。
+
+总之，上面的例子没什么用，只是在类对象产生的途中加了一些输出，没用实际用处。
+
+这里给一个实际的例子，摘自我前面说的别人写的代理池：
+
+~~~python
+class ProxyMetaclass(type):
+    """
+    元类，在ProxyGetter类中加入
+    __CrawlFunc__和__CrawlFuncCount__两个参数
+    分别表示爬虫函数和爬虫函数的数量
+    """
+    def __new__(cls, name, bases, attrs):
+        count = 0
+        attrs['__CrawlFunc__'] = []
+        for k in attrs.keys():
+            if k.startswith('proxy_'):
+                attrs['__CrawlFunc__'].append(k)
+                count += 1
+        attrs['__CrawlFuncCount__'] = count
+        return type.__new__(cls, name, bases, attrs)
+
+~~~
+
+这个，有什么用呢？可以看到，它会为类对象新增两个属性，一个是一个列表里面存在类的所有特定开头的属性，一个存着这些属性的个数。
+
+
+
+反正，我现在是比较明白。如果上述内容没能让你真的明白，那么请去看python学习手册第四版元类一章，静下心来，真正用心地去看，你会理解的很透彻的。
+
+最后，再重复一次，元类用来干嘛？用于拦截类的创建过程，为其封装一些我们想要添加的东西和额外操作。
