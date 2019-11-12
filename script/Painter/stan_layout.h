@@ -14,7 +14,7 @@ public :
     ~SLayout();
 
     void addItem(QLayoutItem *item);
-    void addWidget(QWidget* widget, int p);
+    void addWidget(QWidget* widget, int p, int width1, int height1);
 
 
     QLayoutItem *itemAt(int index) const;
@@ -25,13 +25,17 @@ public :
 private :
     struct SI
     {
-        SI(QLayoutItem* i, int p)
+        SI(QLayoutItem* i, int p, int width1, int height1)
         {
             item = i;
             order = p;
+            width = width1;
+            height = height1;
         }
         QLayoutItem * item;
         int order;
+        int width;
+        int height;
     };
     QList<SI *> list;
     int numl=0;

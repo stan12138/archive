@@ -119,3 +119,17 @@ char *fgets(char *lines, int maxline, FILE *fp);
 int fputs(char *line, FILE *fp);
 ~~~
 
+
+
+## 我要疯了
+
+感觉似乎永远都没真正学会过c，c从来没有让我有用python时的感觉。
+
+最近，我又遭遇了一些挫折和纠结，然后希望自己可以变得更好，这是一个很艰难的过程，学习也算是其中一部分，所以今次，C必须要再学一次。
+
+参考书：Modern C 作者 Jens Gustedt 是的，这是一本英文书，但应该能看懂的吧，网上可以下到免费电子版。
+
+
+
+
+
