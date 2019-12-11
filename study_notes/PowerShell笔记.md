@@ -235,3 +235,123 @@ ps | ConvertTo-Html | Out-File process.html
 
 ### 对象与数据
 
+powershell的数据使用对象表示，例如`get-process`产生的数据每一行代表一个进程，每一列代表一种属性，Get-member可以获取所有的属性和方法，别名gm
+
+~~~powershell
+get-process | gm
+~~~
+
+就可以获知都有哪些列，自然这里面包含了属性和方法
+
+~~~powershell
+get-process | sort-object -property VM
+~~~
+
+按照vm属性排序
+
+sort-object的别名 sort
+
+
+
+~~~powershell
+get-process | select-object -property Name, ID, VM, CPU
+~~~
+
+select-object 别名select  property是定位参数
+
+
+
+所以，对于我们获取的数据，可以首先使用gm知道它的属性，然后用sort和select进行选择处理
+
+
+
+### 管道进阶
+
+不想看，也还没看懂
+
+
+
+### 格式化
+
+
+
+
+
+### 远程处理
+
+powershell的远程处理类似telnet和ssh，但是通信协议不一样，powershell用的协议叫做ws-man，针对管理的web服务，基于http/https。基于windows远程服务组件，即WinRM
+
+说实话，我现在并未搞懂这个远程处理的细节，但是，现在我参照各种教程和指南，应该是成功的，刚才也借助了frp完成了内网穿透，当然还有很多东西并未完成，所以，现在只是大概能用的。
+
+在一对一模式下，powershell远程管理功能自然分成了服务端和客户端，在服务端的话，需要在管理员powershell下执行：
+
+~~~powershell
+Get-Service winrm
+Enable-PSRemoting -Force
+Disable-PSRemoting -Force
+~~~
+
+第一条命令用来查看winrm服务的状态，应该是stopped的，然后第二条命令可以开启ps的远程管理功能，同时会帮忙开启winrm，当不再使用时，第三条命令可以关闭ps远程管理。
+
+客户端的话，我用了太多命令都有点记不清了，大概是：
+
+~~~powershell
+Enable-PSRemoting -Force
+Set-Item -Path WSMan:\localhost\client\trustedhosts -Value * -Force
+Disable-PSRemoting -force
+~~~
+
+第一条也是开启ps远程管理，然后第二步是把任意主机加入信任列表，这样我们的电脑才能连到服务端。
+
+也许服务端也需要这个？我也不知道，反正我在服务端也输过。
+
+最后一个命令就是在不用的时候关闭的。
+
+
+
+初期设置应该到此已经搞定，接下来当客户端要连接服务端的时候，直接使用：
+
+~~~powershell
+Enter-PSSession -ComputerName 10.210.68.195 -Credential Stan
+~~~
+
+这样类似的命令就行了，然后就能连接到powershell了。
+
+
+
+服务使用的端口有两种http用5895，https用5896，我测试实际上用的是5895
+
+
+
+所以，我的frpc.ini做了如下配置：
+
+~~~ini
+[common]
+server_addr = xxxxxxxx
+server_port = 12345
+
+[stan]
+type = tcp
+local_ip = 127.0.0.1
+local_port = 5985
+remote_port = 60009
+.custom_domains = xxxxxxxx
+~~~
+
+就是用服务器的60009代理了5985端口，然后客户端这边，可以使用`-Port`参数指定服务端的端口号，如下：
+
+~~~powershell
+Enter-PSSession -ComputerName xxxxxxx -Credential Stan -Port 60009
+~~~
+
+但是，试一下你就知道根本连不上，这是为什么呢？
+
+观察一下错误信息，基本可以发现是在说无法解析computername，这是因为我在这里使用了服务器的域名作为computername。然后尝试ping一下服务器，找到服务器的ip地址，然后把computername替换为ip地址，就成功连上了。
+
+真坑。
+
+当我们连上远端的powershell之后，输入`exit`就可以断开连接。
+
+我现在还不知道怎么编辑文件，传输文件，所以还是一个问题.
+
+然后，我看到了很多资料，说powershell的远程管理功能现在不仅仅可以基于winrm了，也可以使用ssh，如果使用ssh会带来多少便利呢？我也不知道，至于配置方式，我也没有尝试。
