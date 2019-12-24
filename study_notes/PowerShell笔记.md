@@ -355,3 +355,95 @@ Enter-PSSession -ComputerName xxxxxxx -Credential Stan -Port 60009
 我现在还不知道怎么编辑文件，传输文件，所以还是一个问题.
 
 然后，我看到了很多资料，说powershell的远程管理功能现在不仅仅可以基于winrm了，也可以使用ssh，如果使用ssh会带来多少便利呢？我也不知道，至于配置方式，我也没有尝试。
+
+
+
+### 后台任务
+
+后台任务很重要。按照参考书上说的，使用`Start-Job`执行后台任务，但是在我实际的测试中，并没用，任务总是立即被结束。
+
+现在我找到了一个新的方法，使用`Start-Process`命令：
+
+~~~powershell
+Start-Process [-FilePath] <string> [[-ArgumentList] <string[]>]  [<CommonParameters>]
+~~~
+
+更加完整的格式可以去看微软官网的说明。
+
+给出一个例子：
+
+~~~powershell
+Start-Process -FilePath ".\background.exe" -RedirectStandardOutput "out.txt" -WindowStyle Hidden
+~~~
+
+`-FilePath`参数给出了我们要执行的exe程序的名字，如果需要带参数，可以通过`-ArgumentList`以字符串的形式给出参数，可以重定向标准输入输出到文件，并且通过窗口样式参数指定无窗口运行，这样就可以完成后台执行命令了。
+
+上例中，`background.c`源码如下：
+
+~~~c
+#include<stdio.h>
+#include<Windows.h>
+
+
+int main(int argc, char *args[])
+{
+	int times = 50;
+
+	while(times>0)
+	{
+		printf("%d\n", times);
+		Sleep(2000);
+		times--;
+	}
+
+	printf("part 1 done!");
+
+	while(times<50)
+	{
+		printf("%d\n", times);
+		Sleep(2000);
+		times++;
+	}
+
+	return 0;
+}
+~~~
+
+
+
+既然如此，那么其实关于执行python之类的，就很简单了，执行pyhon文件的命令是`python test.py`，这里明显`python`是一个exe， 而文件名字是参数，所以很容易就可以做到。
+
+也知道的吧，python自己也提供了另一种后台执行方法，就是用`pythonnw.exe`替代`python.exe`
+
+关于上述命令，唯一一个我很不满意的问题就是，标准输出被重定向之后，输出内容不能及时刷新到文件中，在`background`测试中，直到程序完全执行结束，结果才会被一次性刷新进入重定向输出文件。
+
+
+
+### 开机自动执行脚本
+
+对于某些电脑，我需要它开机执行一些常驻程序。举例，我需要让电脑自动执行一个校园网登录脚本，然后使用邮件将IP地址发送给我。这些是短时的代码，会快速执行完毕。另外还需要自动启动一些常驻后台的程序，例如自动启动frp内网穿透程序，以及循环检测校园网登陆状态的代码。
+
+总而言之，我需要开机自动启动，以及后台程序。
+
+首先来说一下，我所面临的问题，我之前做过利用批处理脚本，放在C盘的启动目录中，来实现开机启动的功能，工作状况良好。但是现在因为要执行powershell的后台命令，所以，我想把批处理换成ps1脚本，但是也许是我电脑的问题，我好像搞错了打开方式，然后也莫名其妙的无法重新设定，总之我的ps1脚本的默认打开方式变成了用sublime打开，这就造成了极其尴尬的ps1脚本执行时是打开.......
+
+所以我现在的妥协方式是搞一个批处理，然后用批处理启动powershell，来执行ps1脚本。
+
+我想多找几种开机启动的方式，然后从里面选择最好的。根据我查到的资料，主要包括以下几种方法：
+
+1. 启动目录，可以将脚本放入下述两个目录中任意一个：
+    - C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Startup
+    - C:\Users\xxxxxx\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup
+
+2. [这个网站](https://www.itprotoday.com/windows-8/powershell-script-run-certain-service)，给出了一个通过组策略的方式，但是我测试了一下，好像不太行？不过我使用ps1测试的，也许批处理会可以，我没试，重启好多次了，好麻烦呀。
+3. [这里](https://www.cnblogs.com/tinysun/p/6732973.html)，给出了一个使用注册表的方式，我没试。
+
+呃，想一下，还有其他方法没，噢，对了，我还看到了一个使用计划任务来做的，也没测试。
+
+反正吧，我现在找到的就是这些方式。我觉得还是方式1比较简单。。。。。但是似乎系统执行重大更新会被清除？也许是升级。
+
+
+
+需要注意的另一个问题是，我在测试时，发现似乎方式一启动的exe，并未在任务管理器中找到，但是根据输出结果看，它似乎又的确在运行。
+
+先到这里吧。
