@@ -21,12 +21,17 @@ ctrl-c会被延迟到其余阶段
 """
 
 
+"""
+考虑加入日志功能  19.12.30 2：26
+
+"""
+
 class Server :
 
     def __init__(self, ip, port) :
 
         self.addr = (ip, port)
-        self.server = self.generate_server()
+        self.server = self._generate_server()
 
         self.selector = selectors.DefaultSelector()
 
@@ -36,9 +41,12 @@ class Server :
 
         self._lock = threading.Lock()
 
-        signal.signal(signal.SIGINT, self.interrupt_handler)
+        signal.signal(signal.SIGINT, self._interrupt_handler)
 
-    def interrupt_handler(self, sig, frame): 
+    def _interrupt_handler(self, sig, frame): 
+        """
+        ctr-c捕捉
+        """
         print("get stop signal......")
         for item in self.messenger: 
             self.selector.unregister(item.socket)
@@ -49,8 +57,21 @@ class Server :
         print("close work done, bye~~~")
         sys.exit(0)
 
+    def _generate_server(self) :
+        """
+        生成TCP服务器
+        """
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        sock.bind(self.addr)
+        sock.listen()
+
+        sock.setblocking(False)
+
+        return sock
+
     def serve_forever(self): 
-        run_thread = threading.Thread(target=self.run, daemon=True)
+        run_thread = threading.Thread(target=self._listen, daemon=True)
         
         broadcast = threading.Thread(target=self.run_broadcast, daemon=True)
 
@@ -65,29 +86,22 @@ class Server :
 
         while True: 
             print("broadcast")
-            self.broadcast({"TP":"broadcast"}, "我是服务器".encode("utf-8"))
+            self._broadcast({"TP":"broadcast"}, "我是服务器".encode("utf-8"))
             time.sleep(2)
 
-    def generate_server(self) :
 
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        sock.bind(self.addr)
-        sock.listen()
 
-        sock.setblocking(False)
-
-        return sock
-
-    def run(self) :
-
+    def _listen(self) :
+        """
+        持续监听
+        """
         while True: 
             events = self.selector.select(timeout=None)
 
             for key, mask in events:
                 # print(key.data) 
                 if key.data == None: 
-                    self.accept(key.fileobj)
+                    self._accept(key.fileobj)
                 else: 
                     message = key.data
                     try:
@@ -97,9 +111,12 @@ class Server :
                     except lib.RecvNothing:
                         self._close_client(message)
                     else:
-                        self.respond(message)
+                        self.process_read(message)
 
-    def accept(self, sock): 
+    def _accept(self, sock): 
+        """
+        接受一个客户端的连接
+        """
         client, addr = sock.accept()
         print("get client:", addr)
         client.setblocking(False)
@@ -112,7 +129,25 @@ class Server :
         self.messenger.append(message)
         self._lock.release()
 
-    def broadcast(self, header, content=None): 
+    def _close_client(self, message_of_client, need_lock=True): 
+        """
+        关闭一个客户端，可以选择是否需要使用锁，注意
+        绝对不可以遍历self.messenger同时删除
+        """
+        self.selector.unregister(message_of_client.socket)
+        if need_lock:
+            self._lock.acquire()
+            self.messenger.remove(message_of_client)
+            self._lock.release()
+        else: 
+            self.messenger.remove(message_of_client)
+
+        print("close one client:", len(self.messenger))
+
+    def _broadcast(self, header, content=None): 
+        """
+        向全体客户端广播信息
+        """
         self._lock.acquire()
         remove_list = []
         for item in self.messenger: 
@@ -126,22 +161,14 @@ class Server :
         self._lock.release()
 
 
-    def respond(self, message_of_client): 
-
+    def process_read(self, message_of_client): 
+        """
+        如何答复客户端发送的信息
+        """
         print("recv message:", message_of_client.header, message_of_client.content)
 
         message_of_client.send({"type":"message"}, message_of_client.content)
 
-    def _close_client(self, message_of_client, need_lock=True): 
-        self.selector.unregister(message_of_client.socket)
-        if need_lock:
-            self._lock.acquire()
-            self.messenger.remove(message_of_client)
-            self._lock.release()
-        else: 
-            self.messenger.remove(message_of_client)
-
-        print("close one client:", len(self.messenger))
 
 
 if __name__ == '__main__':

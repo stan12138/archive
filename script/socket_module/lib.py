@@ -12,6 +12,8 @@ CL:123;CT:image;     分号分割的键值对形式，结尾不包含分号, 至
 设计一个NeedClose的异常，然后让所有应该导致关闭的异常都继承这个
 这样就比较容易捕捉需要关闭socket的异常了
 """
+import time
+
 __all__ = ["Messenger", "RecvNothing", "SendNothing", "EncodeError", "DecodeError", "NeedCLError", "HeaderFormatError", "PartnerCloseError"]
 
 
@@ -47,7 +49,9 @@ class Messenger:
 
         self.info = None
 
-        self.report_time = None
+        self.recv_time = None
+
+        self.send_time = None
 
         self.header_length = None
         self.header = None
@@ -149,6 +153,7 @@ class Messenger:
         else :
             self.content = None
 
+        self.recv_time = time.time()
 
 
     def send(self, header, content=None):
@@ -158,6 +163,8 @@ class Messenger:
         message = self._construct_message(header, content)
 
         self._write(message)
+
+        self.send_time = time.time()
 
     def _construct_message(self, header, content): 
         if content:         
@@ -188,5 +195,5 @@ class Messenger:
 
 
     def process_read(self): 
-        print("process read")
+        # print("process read")
         self.read()
