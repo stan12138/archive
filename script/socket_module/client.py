@@ -13,6 +13,10 @@ import threading
 import lib
 
 
+"""
+client的这种设计有问题？ 为什么没有及时触发接收事件, 好像就是因为WRITE事件，去掉就好了
+"""
+
 class Client :
 
     def __init__(self, ip, port) :
@@ -22,7 +26,7 @@ class Client :
 
         self.selector = selectors.DefaultSelector()
 
-        events = selectors.EVENT_READ | selectors.EVENT_WRITE
+        events = selectors.EVENT_READ #| selectors.EVENT_WRITE
         message = lib.Messenger(self.selector, self.client, self.addr)
         self.selector.register(self.client, events, data=message)
 
@@ -59,6 +63,7 @@ class Client :
 
     def process_read(self, message): 
         print("recv:", message.header, message.content)
+        message.send(message.header, message.content)
 
 if __name__ == '__main__':
     

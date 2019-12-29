@@ -52,11 +52,21 @@ class Server :
     def serve_forever(self): 
         run_thread = threading.Thread(target=self.run, daemon=True)
         
+        broadcast = threading.Thread(target=self.run_broadcast, daemon=True)
+
+
         run_thread.start()
+        broadcast.start()
 
         while True :
             pass
 
+    def run_broadcast(self): 
+
+        while True: 
+            print("broadcast")
+            self.broadcast({"TP":"broadcast"}, "我是服务器".encode("utf-8"))
+            time.sleep(2)
 
     def generate_server(self) :
 
@@ -102,9 +112,19 @@ class Server :
         self.messenger.append(message)
         self._lock.release()
 
-    def broadcast(self): 
+    def broadcast(self, header, content=None): 
+        self._lock.acquire()
+        remove_list = []
+        for item in self.messenger: 
+            try:
+                item.send(header, content)
+            except Exception as er:
+                print(er) 
+                remove_list.append(item)
+        for item in remove_list: 
+            self._close_client(item, need_lock=False)
+        self._lock.release()
 
-        pass
 
     def respond(self, message_of_client): 
 
@@ -112,11 +132,14 @@ class Server :
 
         message_of_client.send({"type":"message"}, message_of_client.content)
 
-    def _close_client(self, message_of_client): 
+    def _close_client(self, message_of_client, need_lock=True): 
         self.selector.unregister(message_of_client.socket)
-        self._lock.acquire()
-        self.messenger.remove(message_of_client)
-        self._lock.release()
+        if need_lock:
+            self._lock.acquire()
+            self.messenger.remove(message_of_client)
+            self._lock.release()
+        else: 
+            self.messenger.remove(message_of_client)
 
         print("close one client:", len(self.messenger))
 
