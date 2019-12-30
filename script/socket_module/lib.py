@@ -44,25 +44,27 @@ class Messenger:
     def __init__(self, selector, fileobj, addr, default_recv_length=4096): 
 
         self.socket = fileobj
-
         self.addr = addr
 
-        self.info = None
-
         self.recv_time = None
-
         self.send_time = None
 
-        self.header_length = None
         self.header = None
         self.body = None
-        self.content_length = None
 
-        self.default_recv_length = default_recv_length
+        self.__header_length = None
 
-    def _read(self, length=None): 
+        self.__content_length = None
 
-        recv_length = self.default_recv_length if length==None else length
+        self.__default_recv_length = default_recv_length
+
+    def __read(self, length=None): 
+        """
+        读取一定数据
+        private
+        """
+
+        recv_length = self.__default_recv_length if length==None else length
 
         try: 
             data = self.socket.recv(recv_length)
@@ -76,9 +78,10 @@ class Messenger:
             else: 
                 raise RecvNothing("recv nothing, should close")
 
-    def _write(self, message): 
+    def __write(self, message): 
         """
-        消息已经经过二进制处理了
+        发送二进制消息
+        private
         """
 
         while len(message)>0: 
@@ -94,7 +97,11 @@ class Messenger:
                 else :
                     message = message[l:]
 
-    def _parse_header(self, data): 
+    def __parse_header(self, data): 
+        """
+        解析Header
+        private
+        """
         try: 
             data = data.decode("utf-8")
         except: 
@@ -111,12 +118,16 @@ class Messenger:
 
         return header
 
-    def _process_header(self, header_length, data): 
+    def __process_header(self, header_length, data): 
+        """
+        处理header
+        private
+        """
         while len(data)<header_length: 
-            data += self._read(header_length-len(data))
+            data += self.__read(header_length-len(data))
         header_data = data[:header_length]
 
-        header = self._parse_header(header_data)
+        header = self.__parse_header(header_data)
         if "CL" not in header: 
             raise NeedCLError("header wrong, without content length")
 
@@ -125,48 +136,22 @@ class Messenger:
         return header, data
 
 
-    def _process_body(self, data, content_length): 
+    def __process_body(self, data, content_length): 
+        """
+        处理body
+        private
+        """
         while len(data)<content_length:
-            data += self._read(content_length-len(data))
+            data += self.__read(content_length-len(data))
 
         return data
 
 
-    def read(self): 
-
-        data = self._read(3)
-        header_length_info = 2
-        self.header_length = 0
-        self.content_length = 0
-
-        while len(data)<header_length_info: 
-            data += self._read(1)
-
-        self.header_length = int.from_bytes(data[:header_length_info], byteorder="little")
-
-        self.header, data = self._process_header(self.header_length, data[2:])
-
-        self.content_length = int(self.header["CL"])
-
-        if self.content_length>0 :
-            self.content = self._process_body(data, self.content_length)
-        else :
-            self.content = None
-
-        self.recv_time = time.time()
-
-
-    def send(self, header, content=None):
+    def __construct_message(self, header, content): 
         """
-        content必须是二进制
+        构建消息
+        private
         """
-        message = self._construct_message(header, content)
-
-        self._write(message)
-
-        self.send_time = time.time()
-
-    def _construct_message(self, header, content): 
         if content:         
             if type(content) != bytes: 
                 raise EncodeError("content must be bytes")
@@ -194,6 +179,49 @@ class Messenger:
         return message
 
 
+
+    def read(self): 
+        """
+        读取数据
+        供外部调用
+        """
+        data = self.__read(3)
+        header_length_info = 2
+        self.__header_length = 0
+        self.__content_length = 0
+
+        while len(data)<header_length_info: 
+            data += self.__read(1)
+
+        self.__header_length = int.from_bytes(data[:header_length_info], byteorder="little")
+
+        self.header, data = self.__process_header(self.__header_length, data[2:])
+
+        self.__content_length = int(self.header["CL"])
+
+        if self.__content_length>0 :
+            self.content = self.__process_body(data, self.__content_length)
+        else :
+            self.content = None
+
+        self.recv_time = time.time()
+
+
+    def send(self, header, content=None):
+        """
+        content必须是二进制
+        发送信息
+        供外部调用
+        """
+        message = self.__construct_message(header, content)
+
+        self.__write(message)
+
+        self.send_time = time.time()
+
+
     def process_read(self): 
-        # print("process read")
+        """
+        处理读数据请求，供外部调用
+        """
         self.read()

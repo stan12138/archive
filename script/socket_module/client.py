@@ -23,46 +23,54 @@ class Client :
 
     def __init__(self, ip, port) :
 
-        self.addr = (ip, port)
-        self.client = self._generate_client()
+        self._addr = (ip, port)
+        self._client = self.__generate_client()
 
-        self.selector = selectors.DefaultSelector()
+        self.__selector = selectors.DefaultSelector()
 
         events = selectors.EVENT_READ #| selectors.EVENT_WRITE
-        self.messenger = lib.Messenger(self.selector, self.client, self.addr)
-        self.selector.register(self.client, events, data=self.messenger)
+        self.messenger = lib.Messenger(self.__selector, self._client, self._addr)
+        self.__selector.register(self._client, events, data=self.messenger)
 
         self._lock = threading.Lock()
 
-        signal.signal(signal.SIGINT, self._interrupt_handler)
+        signal.signal(signal.SIGINT, self.__interrupt_handler)
 
-    def _interrupt_handler(self, sig, frame): 
+    def __interrupt_handler(self, sig, frame): 
         """
-        ctr-c捕捉
+        捕捉到ctr-c
+        定义处理方式为关闭所有socket
+        private
         """
         print("get stop signal......")
 
-        self.selector.unregister(self.client)
-        self.client.close()
+        self.__selector.unregister(self._client)
+        self._client.close()
 
         print("close work done, bye~~~")
         sys.exit(0)
 
-    def _generate_client(self) :
-
+    def __generate_client(self) :
+        """
+        生成，配置一个TCP客户端
+        private
+        """
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.setblocking(False)
-        sock.connect_ex(self.addr)
+        sock.connect_ex(self._addr)
 
         return sock
 
     def _listen(self) :
-
+        """
+        持续监听
+        外部可以调用
+        不要override
+        """
         while True: 
-            events = self.selector.select(timeout=1)
+            events = self.__selector.select(timeout=1)
 
             for key, mask in events:
-                # print(key.data, mask&selectors.EVENT_READ)
                 message = key.data
                 if mask & selectors.EVENT_WRITE:
                     self.process_write(message)
@@ -70,24 +78,35 @@ class Client :
                     message.process_read()
                     self.process_read(message)
 
+    def process_write(self, message_of_mine): 
+        """
+        废弃
+        """
+        # print("process input")
+
+        data = input(">> ")
+
+        message_of_mine.send({"type":"message"}, data.encode("utf-8"))
+
+    def process_read(self, message): 
+        """
+        如何处理接收到的信息
+        子类重载这个方法实现对于消息的处理
+        """
+        print("recv:", message.header, message.content)
+        message.send(message.header, message.content)
+
+
     def run(self): 
+        """
+        示范性自定义方法
+        """
         listen_thread = threading.Thread(target=self._listen, daemon=True)
 
         listen_thread.start()
 
         while True: 
             pass
-
-
-    def process_write(self, message_of_mine): 
-        # print("process input")
-        data = input(">> ")
-
-        message_of_mine.send({"type":"message"}, data.encode("utf-8"))
-
-    def process_read(self, message): 
-        print("recv:", message.header, message.content)
-        message.send(message.header, message.content)
 
 if __name__ == '__main__':
     

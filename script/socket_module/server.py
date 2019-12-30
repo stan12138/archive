@@ -14,52 +14,55 @@ import threading
 
 import lib
 
-"""
-服务器在某些运行阶段，是无法使用ctrl-c关闭的
-ctrl-c会被延迟到其余阶段
-考虑一下是不是要使用多线程运行，也方便广播
-"""
-
 
 """
 考虑加入日志功能  19.12.30 2：26
 
 """
 
+"""
+考虑加入多播功能 19.12.30 21:53
+"""
+
+
 class Server :
 
     def __init__(self, ip, port) :
 
         self.addr = (ip, port)
-        self.server = self._generate_server()
+        self.server = self.__generate_server()
 
-        self.selector = selectors.DefaultSelector()
+        self.__selector = selectors.DefaultSelector()
 
-        self.selector.register(self.server, selectors.EVENT_READ, data=None)
+        self.__selector.register(self.server, selectors.EVENT_READ, data=None)
 
         self.messenger = []
 
         self._lock = threading.Lock()
 
-        signal.signal(signal.SIGINT, self._interrupt_handler)
+        signal.signal(signal.SIGINT, self.__interrupt_handler)
 
-    def _interrupt_handler(self, sig, frame): 
+    def __interrupt_handler(self, sig, frame): 
         """
-        ctr-c捕捉
+        捕捉到ctr-c
+        定义处理方式为关闭所有socket
+        private
         """
         print("get stop signal......")
         for item in self.messenger: 
-            self.selector.unregister(item.socket)
+            self.__selector.unregister(item.socket)
             item.socket.close()
-        self.selector.unregister(self.server)
+        self.__selector.unregister(self.server)
         self.server.close()
 
         print("close work done, bye~~~")
         sys.exit(0)
 
-    def _generate_server(self) :
+    def __generate_server(self) :
         """
         生成TCP服务器
+        配置TCP服务器
+        private
         """
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -70,38 +73,38 @@ class Server :
 
         return sock
 
-    def serve_forever(self): 
-        run_thread = threading.Thread(target=self._listen, daemon=True)
-        
-        broadcast = threading.Thread(target=self.run_broadcast, daemon=True)
 
+    def __accept(self, sock): 
+        """
+        接受一个客户端的连接
+        private
+        """
+        client, addr = sock.accept()
+        print("get client:", addr)
+        client.setblocking(False)
 
-        run_thread.start()
-        broadcast.start()
+        message = lib.Messenger(self.__selector, client, addr)
 
-        while True :
-            pass
+        self.__selector.register(client, selectors.EVENT_READ, data=message)
 
-    def run_broadcast(self): 
-
-        while True: 
-            print("broadcast")
-            self._broadcast({"TP":"broadcast"}, "我是服务器".encode("utf-8"))
-            time.sleep(2)
+        self._lock.acquire()
+        self.messenger.append(message)
+        self._lock.release()
 
 
 
     def _listen(self) :
         """
         持续监听
+        供外部调用，但是不希望被override
         """
         while True: 
-            events = self.selector.select(timeout=None)
+            events = self.__selector.select(timeout=None)
 
             for key, mask in events:
                 # print(key.data) 
                 if key.data == None: 
-                    self._accept(key.fileobj)
+                    self.__accept(key.fileobj)
                 else: 
                     message = key.data
                     try:
@@ -113,28 +116,17 @@ class Server :
                     else:
                         self.process_read(message)
 
-    def _accept(self, sock): 
-        """
-        接受一个客户端的连接
-        """
-        client, addr = sock.accept()
-        print("get client:", addr)
-        client.setblocking(False)
 
-        message = lib.Messenger(self.selector, client, addr)
-
-        self.selector.register(client, selectors.EVENT_READ, data=message)
-
-        self._lock.acquire()
-        self.messenger.append(message)
-        self._lock.release()
 
     def _close_client(self, message_of_client, need_lock=True): 
         """
         关闭一个客户端，可以选择是否需要使用锁，注意
         绝对不可以遍历self.messenger同时删除
+
+        外部可以调用
+        不要override
         """
-        self.selector.unregister(message_of_client.socket)
+        self.__selector.unregister(message_of_client.socket)
         if need_lock:
             self._lock.acquire()
             self.messenger.remove(message_of_client)
@@ -147,6 +139,9 @@ class Server :
     def _broadcast(self, header, content=None): 
         """
         向全体客户端广播信息
+
+        外部可以调用
+        不要override
         """
         self._lock.acquire()
         remove_list = []
@@ -161,9 +156,35 @@ class Server :
         self._lock.release()
 
 
+    def serve_forever(self): 
+        """
+        示范性自定义方法
+        使用两个线程同时实现了listen和broadcast
+        """
+        run_thread = threading.Thread(target=self._listen, daemon=True)
+        
+        broadcast = threading.Thread(target=self.run_broadcast, daemon=True)
+
+
+        run_thread.start()
+        broadcast.start()
+
+        while True :
+            pass
+
+    def run_broadcast(self): 
+        """
+        示范性自定义方法
+        配合serve_forever进行广播
+        """
+        while True: 
+            print("broadcast")
+            self._broadcast({"TP":"broadcast"}, "我是服务器".encode("utf-8"))
+            time.sleep(2)
+
     def process_read(self, message_of_client): 
         """
-        如何答复客户端发送的信息
+        子类通过重写这个方法实现对于接收到客户端信息之后的处理
         """
         print("recv message:", message_of_client.header, message_of_client.content)
 
