@@ -1957,3 +1957,54 @@ Window
 
 Sorry, 心情变得非常糟糕, 今天我没有任何心情再继续了.
 
+
+
+### 主界面阴影
+
+我实在是没有多少设计天赋，依旧没能设计出一个觉得满意的界面来，最近在网上看了一些别人的作品，其中有一些作品使用了阴影元素。
+
+这里，记录一下如何在使用QML的情况下，为无边框主界面窗口添加阴影效果。代码如下：
+
+~~~qml
+import QtQuick 2.6
+import QtQuick.Window 2.2
+import QtGraphicalEffects 1.0
+
+Window {
+    visible: true
+    width: 640
+    height: 480
+    flags: Qt.Window | Qt.FramelessWindowHint
+
+    color: Qt.rgba(0,0,0,0)
+
+    id: root
+
+    Rectangle
+    {
+        id: rect
+        width: root.width-20
+        height: root.height-20
+        anchors.centerIn: root
+        radius: 10
+    }
+
+    DropShadow
+    {
+        anchors.fill: rect
+        horizontalOffset: 6
+        verticalOffset: 6
+        radius: 15
+        samples: 31
+        color: "#f0101010"
+        spread: 0.0
+        source: rect
+    }
+}
+
+~~~
+
+以上。
+
+原理就是利用QML自带的阴影效果元素DropShadow，但是它只能作用于元素，所以将主界面设置为透明，在上面蒙一个矩形，然后为矩形设置阴影效果，至于阴影元素的调整细节，去看一下官网文档吧，很简单的。
+
