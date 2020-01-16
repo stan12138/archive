@@ -1,4 +1,6 @@
 #include "stan_layout.h"
+//#include <QDebug>
+
 
 SLayout::SLayout(QWidget *parent, int spacing)
     : QLayout(parent)
@@ -20,7 +22,7 @@ SLayout::~SLayout()
 
 void SLayout::addItem(QLayoutItem* item)
 {
-    list.append(new SI(item, 1));
+    list.append(new SI(item, 1, 20, 20));
     numl = numl+1;
 }
 
@@ -30,21 +32,22 @@ int SLayout::count() const
 }
 
 
-void SLayout::addWidget(QWidget* widget, int p)
+void SLayout::addWidget(QWidget* widget, int p, int width1, int height1)
 {
     if(p==1)
     {
-        list.append(new SI(new QWidgetItem(widget), p));
+        list.append(new SI(new QWidgetItem(widget), p, width1, height1));
         numl = numl + 1;
+        qDebug() << width1 << height1;
     }
     else if(p==2)
     {
-        list.append(new SI(new QWidgetItem(widget), p));
+        list.append(new SI(new QWidgetItem(widget), p, width1, height1));
         numr = numr + 1;
     }
     else if(p==3)
     {
-        list.append(new SI(new QWidgetItem(widget), p));
+        list.append(new SI(new QWidgetItem(widget), p, width1, height1));
         numm = numm + 1;
     }
 
@@ -74,8 +77,10 @@ void SLayout::setGeometry(const QRect &rect)
 
         if(order==1)
         {
-            item->setGeometry(QRect(10+lorder*30, 10, 20, 20));
+            item->setGeometry(QRect(10+lorder*(10+wrapper->width), 10, wrapper->width, 20));
+            //qDebug() << 10+lorder*(10+wrapper->width) << wrapper->width;
             lorder = lorder + 1;
+
         }
         else if(order==2)
         {

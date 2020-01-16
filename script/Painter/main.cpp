@@ -1,11 +1,11 @@
 #include "window.h"
 #include <QApplication>
-#include<QPalette>
 
 
 int main(int argc, char *argv[])
 {
     QApplication a(argc, argv);
+    a.addLibraryPath("./plugins");
     Window w;
     w.setWindowFlags(Qt::FramelessWindowHint);
     w.setAttribute(Qt::WA_TranslucentBackground);

@@ -1685,3 +1685,326 @@ ListView的优点在于，首先可以通过对于model的修改实现动态增�
 
 
 Ok，截止到现在，我想说的就是这些了，总而言之，最最重要的就是要厘清MouseArea的作用区域的问题。
+
+
+
+
+
+### 新设计
+
+明显. 我喜欢使用QML进行界面的设计, 可以比较轻松地做出想要的效果, 也很明显, 我也喜欢使用c++进行后台的设计, 而且现在我基本上都可以比较轻松的理清脉络, 让后台的界面之间完全使用信号和槽进行通信, 这样也算是比较规范的设计模式.
+
+那么一个必须要搞定的点就是如何在QML里面使用c++类, 以及二者如何通过信号和槽进行交流.
+
+关于这一部分的教程, [这是写得很好的我的主要参考博客]( https://www.cnblogs.com/lz20150121/p/5872293.html ), 感谢作者
+
+#### 类的生成与注册
+
+直接为工程添加新的c++ class, 即可添加类的头文件和源码, 假设我们的类叫做Backend, 那么要求这个类必须继承`QObject`, 一般情况下, 我们可能会需要调用这个类的普通方法, 发送信号到槽, 接受信号, 调用属性.
+
+首先, 如果想要调用类的普通方法, 这个方法的声明必须加上`Q_INVOKABLE`宏, 例如:
+
+~~~c++
+Q_INVOKABLE void test(QString info);
+~~~
+
+对于类的信号和槽无需特别处理
+
+对于想要提供给qml访问的属性, 需要使用如下定义:
+
+~~~c++
+Q_PROPERTY(int width READ get_width WRITE set_width NOTIFY change_width2)
+~~~
+
+上面的定义方式可以以名字`width`向qml开放一个属性的访问, 当qml试图获取width的值的时候, `get_width`方法将会被调用, 当qml试图使用`my_backend.width=30`这样的方式为width赋值的时候set_width方法将会被调用
+
+至于最后一个是一个signal, 我觉得没啥用, 实际上可以删掉不写, 例如:
+
+~~~c++
+Q_PROPERTY(int width READ get_width WRITE set_width)
+~~~
+
+所以, 我们的一个类可以以这样的方式定义和声明:
+
+~~~c++
+// back.h
+
+#ifndef BACK_H
+#define BACK_H
+
+#include <QObject>
+#include <QString>
+#include <QDebug>
+
+class Backend : public QObject
+{
+    Q_OBJECT
+public:
+    explicit Backend(QObject *parent = nullptr);
+
+    Q_INVOKABLE void test(QString info);
+
+    Q_PROPERTY(int width READ get_width WRITE set_width)
+
+    int get_width();
+    void set_width(int w);
+
+
+signals:
+    void width_change(int width_a);
+
+public slots:
+    void get_info(QString info);
+
+private:
+    int _width;
+};
+
+#endif // BACK_H
+~~~
+
+~~~c++
+//back.cpp
+#include "back.h"
+
+Backend::Backend(QObject *parent) : QObject(parent)
+{
+    qDebug("generate Back");
+    _width = 20;
+}
+
+
+void Backend::test(QString info)
+{
+    qDebug("this is ordinary func call");
+//    qDebug<< (info);
+}
+
+
+int Backend::get_width()
+{
+    qDebug("try to get width");
+    return _width;
+}
+
+void Backend::set_width(int w)
+{
+    qDebug("try to set width");
+    _width = w;
+}
+
+
+void Backend::get_info(QString info)
+{
+//    qDebug("I get info");
+//    qDebug(info);
+    qDebug() << info;
+    emit width_change(20);
+}
+
+~~~
+
+然后,这个类必须在main.cpp里面进行注册才能使用:
+
+~~~c++
+// main.cpp
+#include <QGuiApplication>
+#include <QQmlApplicationEngine>
+
+#include "back.h"
+
+int main(int argc, char *argv[])
+{
+    QGuiApplication app(argc, argv);
+
+    qmlRegisterType<Backend>("stan.qt.backend", 1, 0, "Backend");
+    // 上为注册语句
+
+    QQmlApplicationEngine engine;
+    engine.load(QUrl(QStringLiteral("qrc:/main.qml")));
+    if (engine.rootObjects().isEmpty())
+        return -1;
+
+    return app.exec();
+}
+~~~
+
+接下来就可以在qml里面使用这个类了:
+
+~~~qml
+import QtQuick 2.6
+import QtQuick.Window 2.2
+
+import stan.qt.backend 1.0
+
+Window
+{
+    visible: true
+    width: 640
+    height: 480
+    x: 200
+    y: 200
+    id: root
+
+    property int resize_event_size: 15
+
+    flags: Qt.Window | Qt.FramelessWindowHint //| Qt.WindowSystemMenuHint
+
+    color: "transparent"
+//    color: "red"
+
+    //opacity: 1
+
+    Rectangle
+    {
+        id: rect1
+        width: root.width
+        height: root.height
+        color: "#55ff0000"
+        radius: 10
+    }
+
+    Backend
+    {
+        id: my_backend
+    }
+
+    Rectangle
+    {
+        id: btn1
+        width: 30
+        height: 30
+        color: "white"
+        anchors.right: rect1.right
+        anchors.rightMargin: 80
+        anchors.top: rect1.top
+        anchors.topMargin: 80
+
+
+        MouseArea
+        {
+            hoverEnabled: true
+            anchors.fill: parent
+            onClicked: {
+//                Qt.quit();
+//                console.log("click");
+                console.log(my_backend.width);
+                my_backend.test("hello");
+                my_backend.width = 30
+            }
+            onEntered: parent.color="#ff0000"
+            onExited: parent.color="#aa0000"
+            z: 10
+            cursorShape: Qt.ArrowCursor
+
+        }
+
+    }
+
+
+
+    Rectangle
+    {
+        id: btn2
+        width: 30
+        height: 30
+        color: "white"
+        anchors.right: rect1.right
+        anchors.rightMargin: 80
+        anchors.top: rect1.top
+        anchors.topMargin: 130
+
+
+        MouseArea
+        {
+            hoverEnabled: true
+            anchors.fill: parent
+            onClicked: {
+//                Qt.quit();
+//                console.log("click");
+//                my_backend.test("hello");
+                my_backend.get_info("this is slot test");
+            }
+            onEntered: parent.color="#ff0000"
+            onExited: parent.color="#aa0000"
+            z: 10
+            cursorShape: Qt.ArrowCursor
+
+        }
+
+    }
+
+    Connections
+    {
+        target: my_backend
+        onWidth_change: {
+            console.log(width_a);
+        }
+    }
+
+}
+~~~
+
+从上述代码可以看出, 想使用这个类, 首先需要使用注册时的名字做一个导入, 然后像普通元素一样进行实例化, 代码里我们使用Rectangle生成了两个按钮, 在第一个按钮里, 我们展示了如何调用设置类的属性, 以及如何调用类的普通方法, 在第二个按钮里我们展示了如何使用类的槽, 最后的Connection展示了, 如何连接类的信号, 首先需要指定我们的目标, 然后qml连接到目标的信号上使用`on + signal name`, 然后signal的名字首字母需要大写, 例如这里我们的类有一个`width_change`方法, 那么在qml里面连接这个方法就放在`onWidth_change`里面, 这个里面就可以写被触发的时候想要执行的语句, 至于信号携带的参数, 使用和信号声明中一样的名字进行获取.
+
+
+
+基本上, 我觉得到这里就基本够用了, 但是考虑到我的关于文件传输的新规范设计里面, 信号之间传递的是一个结构体, 所以接下来还需要了解一下结构体的使用.
+
+呃, 资料搜索结果似乎是不可以. 但是回看ToDo的源码, 可以发现, 我曾经使用过类似的东西, 只是没做笔记:cry:
+
+答案就是使用QVariantList和QVariantMap进行复杂类型的数据的传输, 具体细节甚至是sqlite的使用, 可以多看看ToDo的源码.
+
+Sorry, 心情变得非常糟糕, 今天我没有任何心情再继续了.
+
+
+
+### 主界面阴影
+
+我实在是没有多少设计天赋，依旧没能设计出一个觉得满意的界面来，最近在网上看了一些别人的作品，其中有一些作品使用了阴影元素。
+
+这里，记录一下如何在使用QML的情况下，为无边框主界面窗口添加阴影效果。代码如下：
+
+~~~qml
+import QtQuick 2.6
+import QtQuick.Window 2.2
+import QtGraphicalEffects 1.0
+
+Window {
+    visible: true
+    width: 640
+    height: 480
+    flags: Qt.Window | Qt.FramelessWindowHint
+
+    color: Qt.rgba(0,0,0,0)
+
+    id: root
+
+    Rectangle
+    {
+        id: rect
+        width: root.width-20
+        height: root.height-20
+        anchors.centerIn: root
+        radius: 10
+    }
+
+    DropShadow
+    {
+        anchors.fill: rect
+        horizontalOffset: 6
+        verticalOffset: 6
+        radius: 15
+        samples: 31
+        color: "#f0101010"
+        spread: 0.0
+        source: rect
+    }
+}
+
+~~~
+
+以上。
+
+原理就是利用QML自带的阴影效果元素DropShadow，但是它只能作用于元素，所以将主界面设置为透明，在上面蒙一个矩形，然后为矩形设置阴影效果，至于阴影元素的调整细节，去看一下官网文档吧，很简单的。
+

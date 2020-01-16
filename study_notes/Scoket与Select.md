@@ -265,3 +265,112 @@ A，B分别向S发送任意短消息，让S直到它们暴露在公网的ip和�
 
 
 至于代码就很简单了，这里就不写了，只要严格遵守上述过程就可以。现在已知的是4G的网络似乎是不能穿透的。但是我们学校的校园网是可以穿透的。回家后可以试一下家里的局域网。
+
+
+
+
+
+### 续
+
+我持续在socket编程上遇到麻烦，各种Exception会导致服务器崩溃。现在参考来自[real python](https://realpython.com/python-sockets/)的socket教程，我重新学习一下，记录一下我学到的新知。
+
+#### types.SimpleNamespace
+
+这是types模块里面的一个类，他提供的功能如下：
+
+~~~python
+data = types.SimpleNamespace(addr=addr, inb=b"", outb=b"")
+print(data.addr, data.intb, data.outb)
+~~~
+
+也就是以具名参数的形式传入参数，就可以像属性一样访问，算是对数据的一个包装。
+
+#### selectors模块
+
+它是对于select的高级封装。鼓励使用selectors.DefaultSelector，它会自动根据平台帮我们选择最合适的实现。
+
+它的`register`方法接受三个参数：
+
+~~~python
+register(fileobj, events, data=None)
+~~~
+
+也就是说，我们可以在注册一个描述符的同时携带上一定的数据
+
+其中的events就是`selectors.EVENT_READ`还有`selectors.EVENT_WRITE`等，使用上是这样的：
+
+~~~python
+sel.register(sock, selectors.EVENT_READ, accept)
+
+while True:
+    events = sel.select()
+    for key, mask in events:
+        callback = key.data
+        callback(key.fileobj, mask)
+~~~
+
+注册完了之后，使用select方法阻塞的等待结果，然后返回值是key和mask，其中的key的fileobj属性是文件描述符，data是携带的data，mask是events。
+
+
+
+需要注意，如果我们注册了write事件，这个事件基本就会被一直触发
+
+
+
+## socket模块
+
+使用socket进行网络编程，对我来说一直都是个问题，到目前为止，每次要做socket编程，我依旧十分头疼。
+
+我几乎每次尝试重新做一个新的项目的时候，都会想要重新设计一个应用层协议，而每一次，TCP服务器的设计都让我感觉很头疼。无数的异常，很难让服务器不会因为各种问题而中断运行。我都不知道当时怎么让Filer的IP服务器做到不间断运行的。
+
+现在我决定参考[real python](https://realpython.com/python-sockets/)上面的socket编程的项目设计一个比较通用一点的TCP服务器和客户端模块，然后我也意识到，其实我并不需要每次重新设计应用层协议，只需要制定一个通用协议，然后隐藏在模块之中，自动完成协议的构建和解析就可以了。
+
+
+
+### 特点
+
+这里，同样使用select来完成多连接的服务器设计，同时考虑到服务器的终止和广播功能的设计，也应用了多线程。
+
+和以前的不同在于，这一次我终于注意到了标准库里面的selectors模块，这样就不用使用我写的垃圾SEpoll了。
+
+### 协议
+
+这里，我重新制定了一个应用层协议，以后我都会使用这个协议进行编程，这个协议基本上就是HTTP和real python的混合修改版，我做了一些小幅度的调整。如下：
+
+~~~
+2B            <----开头是2B的数字，小端存储，无符号，代表了header的长度
+CL:123;TYPE:message    <----header是键值对的形式，使用UTF8编码，数字也是直接转换为字符串，每个键值对之间使用分号进行分割，最后一个不用分号，键值对没有特殊要求，可以完全自定义，唯一要求的是必须要一个CL代表content-length，在我的模块设计里面，这一个字段会被隐藏起来，由模块负责添加解析。
+content         <-----content是内容，类似于http的body，要求是二进制格式，模块只负责读取，不负责解析。
+~~~
+
+现在，这个协议的设计方案就是这样的，所以可以负载数据的是header部分和content部分，content自然是可以为空的。
+
+给出一个符合上述格式的报文：
+
+~~~
+b'\x11\x00CL:7;type:messagecwsdwed'
+~~~
+
+明显，这个报文的`b'\x11\x00'`是header长度，header包含`CL和type`两个字段，content的内容是`b'cwsdwed'`
+
+### 模块设计
+
+这里我不会太过于详尽的说明这个模块的每一个部分，而是着重说明各种我原本就不知道的事情，和各种遇到的异常。
+
+a是一个字符串，len(a)，代表了这个字符串中包含了多少个字符，但是并不能代表这个字符串占据了多少空间即字节数，将一个字符串encode可以得到在某种编码下的二进制内容，返回值是bytes对象，对于bytes对象做len操作，得到的是字节数。
+
+前面有提到过，selectors模块里面的注册的每个socket都是可以携带data的。
+
+当发生了可读事件的时候，执行socket.recv，如果什么都没有读到，说明对方关闭了socket，或者在关闭中
+
+当send的时候，send不能保证已经将全部数据发送出去，返回值是发送出去的字节数，如果有信息要发送，但是返回值是0，代表连接已经被破坏了。
+
+这两点在socket的文档里面并未提及，而是在python的socket programing HOWTO里面的。
+
+在send和recv中都有可能会发生BlockingIOError错误，这是因为socket暂时被阻塞了，这种异常只需要直接pass了就可以。
+
+已经观测到send的时候可能发生ConnectionResetError，这也是对方关闭了socket
+
+还有send的ConnectionAbortedError，原因同上。
+
+还有
