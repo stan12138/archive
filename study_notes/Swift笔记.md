@@ -447,3 +447,410 @@ if语句没有差异，只是条件不要括号，然后也不提供快捷的eli
 
 switch语句
 
+
+
+## 2020 新实践
+
+
+
+### 基本规范
+
+没有入口函数，像python一样从头运行，行尾不需要分号。
+
+输出函数是print，注释同C风格
+
+强类型语言
+
+### 数据类型，变量与常量
+
+```swift
+let num = 10    //常量
+var code = 20   //变量
+```
+
+常见基本数据类型一样是整数，浮点数，布尔，字符串。
+
+其中的整数可以被细分为有无符号，8位，16位，32位，64位。浮点数同样是Float和Double。
+
+布尔值也是true和false
+
+字符串是String，支持Unicode，字符是Character，二者不通过引号区分，统一使用双引号，直接通过类型名区分。
+
+定义变量常量，可以不指定类型，可以自动推断。也可以指定类型：
+
+```swift
+let num: Int = 10
+let num: UInt = 11
+let num: Int8 = 244
+```
+
+`Int, Int8, Int16, Int32, Int64`, `UInt, UInt8, UInt16, UInt32, UInt64`
+
+`Bool`
+
+此外包含了一个空值，`nil`，属于单独的类型，其它各种类型都不能设置值为`nil`，只有当把它们的类型设置为可选类型的时候才能设置为`nil`。
+
+
+
+### 组合类型
+
+常见的组合类型包括：元组，数组，集合，字典
+
+元组是最为简单的组合类型，例如：
+
+```swift
+let ip_address: (String, UInt16) = ("192.168.3.14", 5000)
+```
+
+
+
+数组类似与列表，元素类型必须相同
+
+```swift
+let my_list: [Int] = [1,2,3]
+```
+
+
+
+集合类似python的集合，无重复值，但是也无序
+
+```swift
+let va: Set<Int> = [1,3,4,5]
+```
+
+
+
+字典：
+
+```swift
+let di: [String: Int] = ["name": 123, "value": 1234]
+```
+
+
+
+### 运算符
+
+支持`+, - * /`，支持取余`%`
+
+支持`+=`等组合运算符
+
+比较运算符没差
+
+三元运算符为： `condition ? true answer : false answer`
+
+至于所谓区间运算符，空合运算符后面再说
+
+
+
+### 语句
+
+`for`循环的格式与python相同
+
+```swift
+for item in names {
+  print(item)
+}
+```
+
+```swift
+while condition {
+  statements
+}
+```
+
+```swift
+repeat {
+  statements
+} while condition
+
+```
+
+条件语句
+
+```swift
+if condition {
+  statements
+} else if condition {
+  statements
+} else {
+  statements
+}
+
+```
+
+```swift
+switch some value to consider {
+case value 1:
+  respond to value 1
+case value 2,
+     value 3: 
+  respond to value 2
+default: 
+  otherwise, do something else
+}
+
+```
+
+特别的swift的switch语句不存在隐式的贯穿，即默认情况下等同于c里面带break的switch
+
+
+
+### 函数
+
+```swift
+func test(value: Int) -> [Int] {
+  var a: [Int] = []
+  var i = 0
+  while i<value {
+    a.append(i)
+    i += 1
+  }
+  return a
+}
+
+print(test(value: 10))
+
+```
+
+函数定义时，参数可以包含参数标签和参数名称两个标记，其中参数标签用于函数调用传参，参数名称用于函数内部。
+
+```swift
+func greet(person: String, from hometown: String) -> String {
+  return "hello, \(person)! Glad you could visit from \(hometown)."
+}
+
+print(greet(person: "Stan", from: "Mars"))
+
+```
+
+如果想要函数在调用时不用指出某个参数的标签，需要将标签设置为`_`
+
+默认参数直接在类型后面用`=`给出默认值
+
+可变参数
+
+```swift
+func get_mean(_ number: Double...) -> Double {
+  var total: Double = 0
+  for n in number {
+    total += n
+  }
+  return total/Double(number.count)
+}
+
+get_mean(1, 2, 3, 4)
+get_mean(1, 2)
+
+```
+
+
+
+函数参数默认是常量，可以通过将参数指定为输出输出参数实现类似C语言的引用的效果。此时需要在函数定义和调用时同时做处理：
+
+```swift
+func swap(_ a: inout Int, _ b: inout Int) {
+  let s = a
+  a = b
+  b = s
+}
+
+var a: Int = 10
+var b: Int = 11
+swap(&a, &b)
+
+```
+
+函数的类型为参数和返回值共同组成的结构：
+
+```swift
+(Int, Int) -> String
+() -> Void
+(Int) -> (Int, String)
+
+```
+
+诸如以上
+
+这样我们才能定义一个指向函数的变量：
+
+```swift
+var swap_func: (Int, Int) -> Void = swap
+
+```
+
+也因此就可以使用函数作为参数和返回值
+
+
+
+### 闭包
+
+闭包可以认为等同于代码块，也可以是匿名函数
+
+一个类似代码块的例子：
+
+```swift
+let my_code = {
+    print("this is stan")
+    print("how are you")
+    print("bye~~~")
+}
+
+print("----begin")
+my_code()
+print("----end")
+
+```
+
+有点在于这样的代码块可以以这种类似函数的形式调用
+
+闭包可以是一个匿名函数，并且可以接收参数，可以返回值
+
+```swift
+var lambda_func = {
+    (value: Int, name: String) -> String in
+    print("this is \(value)")
+    return "hello, "+name
+}
+
+print(lambda_func(10, "stan"))
+
+```
+
+闭包参数和普通函数的参数的不同在于不需要参数标签即可
+
+
+
+尾随闭包：
+
+```swift
+func closure_test(closure: (Int, Int) -> Void)
+{
+    print("begin test closure")
+    closure(10, 11)
+    print("test done")
+}
+
+closure_test(){
+    (value1: Int, value2: Int) -> Void in
+    print("get value1 \(value1), and get value2 \(value2)")
+}
+
+```
+
+所谓尾随闭包就是在调用一个接受闭包为参数的函数的时候可以直接在调用语句后定义一个闭包，而不用显式的传参
+
+
+
+### 枚举
+
+枚举在swift里面被做了很多的扩展，基本版的枚举：
+
+```swift
+enum My_enum {
+    case v1, v2, v3, v4, v5
+}
+
+enum My_enum1 {
+    case v1
+    case v2
+    case v3
+    case v4
+}
+
+
+var enum_test: My_enum = .v3
+var enum_test2: My_enum1 = .v4
+
+print(enum_test, enum_test2)
+
+```
+
+如上，枚举的枚举值可以有以上两种定义方式，特别需要注意的是枚举值并不像C语言一样被隐性定义为0，1，2等值，他们就是枚举值，就是`My_enum`类型的值
+
+然后如果一个变量已经被定义为自定义的枚举类型，那么在赋值的时候可以省略`My_enum.v3`为`.v3`
+
+如果想要一个枚举具有遍历能力，必须让它遵循`CaseIterable`协议，这种情况下这个枚举就会自动生成一个`allCases`属性，这个属性就标识了枚举的所有成员的集合
+
+```swift
+enum Baverage: CaseIterable {
+    case coffee, tea, juice, wine
+}
+
+for cup in Baverage.allCases {
+    print(cup)
+}
+
+```
+
+枚举更深层次的知识暂时不再处理
+
+
+
+### 结构体
+
+swift同时定义了结构体和类，二者在swift里面更为接近
+
+相比类，结构体不能继承，没有析构函数，没有引用计数。优点是复杂性大大下降，优先应该考虑使用结构体。
+
+```swift
+struct Stan {
+    var width: Int = 10
+    var height: Int = 12
+    var name: String = "Stan"
+}
+
+class Nats {
+    var width: Int = 10
+    var height: Int = 12
+    var name: String = "Stan"
+}
+
+let struct_test = Stan()
+let class_test = Nats()
+
+
+let struct_test2 = Stan(width: 11, height: 13, name: "hello")
+
+```
+
+如上，使用方法也与常无异，都是点号，然后从上面的代码应该可以结构体会默认提供一个可以逐个给成员属性赋值的初始化方法，而类毫无疑问是没有这样的方法的。
+
+
+
+### 什么是值类型
+
+值类型是一种当它被赋值给一个变量，常量，或者传递给一个函数的时候，它的值会被拷贝，也就是类似于常说的传值，默认拷贝而不是引用
+
+
+
+所有基本类型：数字，布尔，字符串，数组，字典，元组，结构体，枚举都是值类型
+
+而类是引用类型
+
+
+
+另外，对于变量或者常量的检测有两种方式`==`和`===`，前者代表相等，后者代表相同，懂得吧。
+
+
+
+### 可选类型
+
+最近在iOS编程中大量遇到了可选类型，并不太会，这里再详细学一下。
+
+可选类型用于处理可能存在值确实的情况，因此只有两种可能，有值或缺失。
+
+当可选类型被赋值为`nil`时就代表没有值，如果没被赋值，就会被自动赋值为nil。
+
+通过和`nil`对比可以确定可选值是否包含值，如果已经确定可选类型包含值之后可以使用`data!`这种语法来进行强制解析。如果不存在值，还强制解析就会出报错。
+
+另外可以使用:
+
+```swift
+if let constantName = someOptional {
+
+}
+
+```
+
+这种语法也可以，只有当后面的可选类型包含值时才会执行，并且会把值解析到前面定义的变量或者常量中。
+
