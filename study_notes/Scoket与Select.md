@@ -374,3 +374,9 @@ a是一个字符串，len(a)，代表了这个字符串中包含了多少个字�
 还有send的ConnectionAbortedError，原因同上。
 
 还有
+
+当对于一个非阻塞的tcp客户端进行连接的时候，使用connect_ex方法，如果连接失败的话，selector会直接返回一个recv事件，并且在接收数据的时候会抛出ConnectionRefusedError异常
+
+
+
+我现在开始了重新完善socket模块的工作，今天做了一些，但是没有搞定，明天会继续，然后推送
