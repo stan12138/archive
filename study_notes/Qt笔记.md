@@ -2008,3 +2008,246 @@ Window {
 
 原理就是利用QML自带的阴影效果元素DropShadow，但是它只能作用于元素，所以将主界面设置为透明，在上面蒙一个矩形，然后为矩形设置阴影效果，至于阴影元素的调整细节，去看一下官网文档吧，很简单的。
 
+
+
+### 矩形圆角
+
+在QML里面到目前为止，据我查到的资料四个圆角是必须一致的，如何分别为四个角设置不同的圆角呢？我的做法是自定义一个组件，包含一个矩形，然后在四个角分别覆盖一个小的矩形，然后为小矩形分别设置圆角。
+
+代码如下：
+
+```QML
+import QtQuick 2.0
+
+Rectangle {
+    property double radius_left_upper: 0
+    property double radius_left_lower: 0
+    property double radius_right_upper: 0
+    property double radius_right_lower: 0
+
+    radius: Math.max(radius_left_lower, radius_left_upper, radius_right_lower, radius_right_upper)
+
+    Rectangle {
+        width: parent.width/2
+        height: parent.height/2
+        radius: radius_left_upper
+        anchors.left: parent.left
+        anchors.top: parent.top
+
+        color: parent.color
+    }
+
+    Rectangle {
+        width: parent.width/2
+        height: parent.height/2
+        radius: radius_left_lower
+        anchors.left: parent.left
+        anchors.bottom: parent.bottom
+
+        color: parent.color
+    }
+
+    Rectangle {
+        width: parent.width/2
+        height: parent.height/2
+        radius: radius_right_upper
+        anchors.right: parent.right
+        anchors.top: parent.top
+
+
+        color: parent.color
+    }
+
+    Rectangle {
+        width: parent.width/2
+        height: parent.height/2
+        radius: radius_right_lower
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+
+
+        color: parent.color
+    }
+
+}
+
+```
+
+
+
+### 无边框窗口的自定义关闭与最小化
+
+自定义关闭很简单：
+
+```QML
+onClicked: {
+	Qt.quit();
+}
+```
+
+但是自定义最小化很麻烦，根据网上查到的资料，在Mac上无边框窗口的自定义最小化是有Bug的，无法工作，有人向Qt官方反馈，但是似乎并未修复。
+
+然后有人给出了[解决方案](https://bugreports.qt.io/browse/QTBUG-64994)
+
+解决方案的处理方法基本就是调用`root.showMinimized();`方法，但是之前必须重新设置`flags`，然后在root的`onVisibilityChanged`方法中重新恢复`flags`
+
+具体细节看以上链接内的`ylilarry`的回答
+
+
+
+### 多界面设计，信号与Loader
+
+如何实现页面的切换，这个讲的很好的[wiki](https://wiki.qt.io/QML_Application_Structuring_Approaches)是我的主要参考
+
+简而言之，最重要的技术就是使用Loader，然后借助信号可以串联不同的界面，然后同时QML还允许信号的由内向外和由外向内穿透，十分的自由。
+
+同时，Loader也可以通过设置`source`来实现加载文件，设置`sourceComponent`来实现动态加载元素。细节可以看看官网。
+
+
+
+[官方的wiki](https://wiki.qt.io/Special:AllPages)
+
+
+
+我在测试中发现，Loader的加载方式存在一些问题，因此我抛弃了这种做法，换成了使用StackView来实现。
+
+StackView的使用算不上复杂，需要注意的点包括如何知道当前元素是谁，以及如何在界面中生成一个定义在qml中的元素，但是却不显示，看一下如下代码：
+
+```qml
+    property Component device_page: DevicePage { objectName: "device"}
+    property Component set_page: SetPage {objectName: "set"}
+
+    StackView {
+        id: stack
+        width: 360
+        height: 419
+        anchors.bottom: rect.bottom
+        anchors.left: rect.left
+        initialItem: device_page
+    }
+    
+    
+    stack.currentItem.objectName!="set"
+```
+
+判断当前元素必须使用objectname，如何设置objectname呢？如上代码段
+
+然后关于生成不显示元素也如上。
+
+接下来需要注意的是，定义在qml中的元素和在文件里面定义一个component元素有什么不同呢？其实没什么太多不同，后者适用于简单结构，第一层只能有一个元素和一个id字段，前者可以比较复杂。
+
+
+
+细节知识，我后面也许会补充，如果不，这些都是我在开发新的Filer界面时使用的知识，看看以后完成的源码就可以了。
+
+
+
+现在我在专注于聊天界面的设计，重点在于ListView的使用，以及文本输入框的使用，对我非常具有参考意义的项目是官方的Qt Quick示例项目[Chat Tutorial](https://doc.qt.io/qt-5/qtquickcontrols-chattutorial-example.html)
+
+不同之处在于，现在我是用的文本输入框是`TextEdit`
+
+```qml
+    TextEdit {
+        id: input
+        color: "black"
+        width: 331
+        height: 89
+        wrapMode: TextEdit.Wrap
+        anchors.bottom: main_rect.bottom
+        anchors.left: main_rect.left
+        textMargin: 10
+        Rectangle {
+            radius: 12
+            anchors.fill: parent
+            color: "#22ff0000"
+        }
+        Keys.onReturnPressed: {
+            commu_info.append({value:input.text})
+            input.clear();
+        }
+```
+
+文本输入框是可以接受多行输入的，但是我给它想办法加了一个监听按回车键的方法，注意这里只能这样来监听回车。
+
+
+
+除了一些小小的问题之外，我现在已经基本制作完毕了聊天界面的设计，主要遇到的问题在于：
+
+1、如何让ListView自动滚动到底部，这个很简单，在向model添加内容的时候，设置一下positionViewAtEnd就可
+
+2、我也不知道我写代码的时候出了什么问题，listview的item会出现重叠，设置了spacing，但是spacing竟然表现为了两个item顶部的间隔，十分诡异，花了居多的时间也没有找到问题在哪，以及如何解决，然后我删掉全部代码，从最基础的开始逐步重新写竟然又正常了，默认就没有重叠，spacing是上一个底部与下一个顶部的间隔，没能重现出问题所在，解决也就无从谈起。已经证实了，如果delegate没有设置width和height，那么就会出现重叠，这大概是ListView无法直接获取元素的尺寸导致
+
+3、现在发现listview在滚动的时候，会出现超出Listview范围仍旧显示的情况，我不清楚该怎么解决，但是其实也可以，只要上下都用东西遮罩一下就可以，解决了！设置`clip:true`即可
+
+4、自动滚动到底部的时候，底部会紧贴输入框的顶部，我希望保持一定的间隔，方法是给ListView设置一个footer，将footer设置为一个一定高度的透明矩形Component
+
+
+
+需要注意的问题，如何设计一个气泡对话框：
+
+一个气泡对话框包括一个圆角矩形主体，和一个三角形的装饰。
+
+三角形部件可以使用Shape进行设计：
+
+```qml
+    Component {
+        id: righttri
+        Shape {
+            anchors.top: parent.top
+            anchors.topMargin: 10
+            width: 21
+            height: 24
+            anchors.left: parent.right
+            anchors.leftMargin: 73
+            ShapePath {
+                fillRule: ShapePath.WindingFill
+                strokeWidth: 0
+                strokeColor: "white"
+                fillColor: "white"
+                startX: 0; startY: 0
+                PathLine { x: 21; y: 12 }
+                PathLine { x: 0; y: 24 }
+                PathLine { x: 0; y: 0 }
+            }
+        }
+    }
+```
+
+但是，我写的这个三角形似乎在定位上遇到了一些问题，这就是anchors.leftmargin那个诡异的值的出现原因，细想起来，我似乎在swiftui的右侧气泡对话框上也遇到了类似的问题。
+
+然后要注意的是fillrule的使用，默认的填充规则会导致特定的绘制顺序下没有填充
+
+如何根据值的不同加载不同的部件呢？依旧可以使用Loader的sourceComponent功能，如下：
+
+```qml
+    Loader {
+        sourceComponent: {
+            switch(position) {
+            case 1: return lefttri
+            case 2: return righttri
+            }
+        }
+    }
+```
+
+
+
+现在遇到的一个比较困难的问题，在ListView的delegate使用Loader实现根据值使用不同部件的情况下，例如会根据发送方，是文件还是消息等决定使用的部件，当使用的是文件消息框的时候，我在消息框内组合了一个文件图标，一个文件名字text，一个自定义进度条。那么此时就有一个问题，我们如何实时更新进度条呢？
+
+我找了很多方法，都没作用，然后我想到了一个方法。在model里面集成一个字段，process，代表进度值，然后定位出来我们要更新进度的是model的哪一个item，方法就是保持一个index，然后使用ListModel.get(index).process += 0.1这样的方式更新model里面的进度信息，即可实现进度条的更新。其他方式没有发现有效的，甚至使用ListModel.setPorperty(index, “process”, 0.5)这样的方式都不行
+
+另外一点，当使用text的时候，某些情况下，希望文本内容只有一行，并且有固定的宽高，超出范围使用省略号，设置如下：
+
+```qml
+                Text {
+                    clip: true
+                    padding: 3
+                    elide: Text.ElideRight  //省略号
+                    text: value
+                    width: 110
+                    height: 20
+                }
+```
+
+
+
